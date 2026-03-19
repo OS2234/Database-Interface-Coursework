@@ -1,0 +1,451 @@
+* {
+    margin: 0;
+    padding: 0
+}
+
+.main {
+    width: 100%;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.5)50%, rgba(0, 0, 0, 0.5)50%), url(website_background.jpeg);
+    background-position: center;
+    background-size: cover;
+    height: 150vh;
+    position: relative;
+}
+
+/*-----------------------------------------------------------------------------------------*/
+/* NAVIGATION BAR */
+/*-----------------------------------------------------------------------------------------*/
+.navbar {
+    width: 93%;
+    height: 85px;
+    margin: auto;
+}
+
+.icon {
+    width: 200px;
+    float: left;
+    height: 70px;
+}
+
+.logo {
+    color: cyan;
+    font-size: 25px;
+    font-family: Arial;
+    float: left;
+    padding-top: 10px;
+    padding-left: 40px;
+}
+
+.menu {
+    width: 400px;
+    float: left;
+    height: 70px;
+}
+
+ul {
+    float: left;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+ul li {
+    list-style: none;
+    margin-left: 62px;
+    margin-top: 24px;
+    font-size: 17px;
+}
+
+ul li a {
+    text-decoration: none;
+    color: aliceblue;
+    font-family: Arial;
+    font-weight: bold;
+    position: relative;
+    padding-bottom: 5px;
+    transition: 0.4s ease-in-out;
+}
+
+ul li a::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: 0;
+    left: 0;
+    background-color: aqua;
+    border-radius: 3px;
+    transition: width 0.4s ease-in-out;
+}
+
+ul li a:hover {
+    color: aqua;
+}
+
+ul li a:hover::after {
+    width: 100%;
+}
+
+
+.login {
+    display: flex;
+    float: left;
+    margin-left: 580px;
+}
+
+.login_btn {
+    width: 100px;
+    height: 30px;
+    background: transparent;
+    border: 2px solid cyan;
+    border-radius: 6px;
+    margin-top: 18px;
+    color: aliceblue;
+    padding-top: 3px;
+    font-size: 17px;
+    font-family: Arial;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.5s;
+}
+
+.login_btn:hover {
+    background: mediumblue;
+}
+
+/*-----------------------------------------------------------------------------------------*/
+/* CONTENT AREA */
+/*-----------------------------------------------------------------------------------------*/
+
+.content {
+    width: 1200px;
+    height: auto;
+    margin: auto;
+    color: cyan;
+
+}
+
+.content h1 {
+    font-size: 50px;
+    font-family: Arial;
+    padding-top: 10px;
+    font-weight: bold;
+    margin-bottom: 30px;
+}
+
+/*-----------------------------------------------------------------------------------------*/
+/* DASHBOARD TABLE */
+/*-----------------------------------------------------------------------------------------*/
+
+.table-wrapper {
+    margin-bottom: 10px;
+}
+
+.table-header h2 {
+    font-size: 46px;
+    margin-bottom: 5px;
+}
+
+.scrollable-table thead {
+    z-index: 20;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.scrollable-table {
+    max-width: 1600px;
+    overflow-y: auto;
+    overflow-x: auto;
+    border-radius: 12px;
+    scrollbar-color: cyan #002244;
+    scrollbar-width: thin;
+    table-layout: auto;
+    position: relative;
+}
+
+.scrollable-table table {
+    width: 100%;
+    border-collapse: collapse;
+    border-radius: 5px;
+}
+
+.scrollable-table th {
+    text-align: center;
+    color: aquamarine;
+    padding: 6px 8px;
+    font-weight: bold;
+    font-size: 14px;
+    border: 3px solid black;
+    backdrop-filter: blur(2px);
+}
+
+.scrollable-table td {
+    text-align: center;
+    color: mediumblue;
+    background-color: rgba(255, 228, 196, 0.65);
+    font-weight: bold;
+    padding: 8px 10px;
+    border: 3px solid black;
+    word-break: break-word;
+}
+
+.scrollable-table thead th {
+    position: sticky;
+    top: 0;
+    background: rgba(0, 0, 255, 0.5);
+}
+
+.scrollable-table thead tr {
+    position: relative;
+    z-index: 15;
+}
+
+.scrollable-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.scrollable-table tbody tr:target {
+    background-color: rgba(0, 255, 255, 0.1);
+}
+
+.action-cell {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    min-width: 120px;
+    max-width: 200px;
+    white-space: normal;
+}
+
+.assigned-list {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    min-width: 120px;
+    max-width: 200px;
+    white-space: normal;
+}
+
+.assigned-list li {
+    background: rgba(0, 255, 255, 0.2);
+    margin: 3px 0;
+    border-radius: 16px;
+    padding: 2px 4px;
+}
+
+
+/*-----------------------------------------------------------------------------------------*/
+/* TABLE BUTTONS */
+/*-----------------------------------------------------------------------------------------*/
+.add-btn {
+    background: transparent;
+    border: 2px solid cyan;
+    border-radius: 30px;
+    padding: 8px 22px;
+    color: white;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.add-btn:hover {
+    background: mediumblue;
+    border-color: aqua;
+}
+
+.edit-student-btn,
+.edit-assessor-btn,
+.save-student-btn,
+.save-assessor-btn,
+.cancel-student-btn,
+.cancel-assessor-btn,
+.delete-student-btn,
+.delete-assessor-btn {
+    background: transparent;
+    border: 1.5px solid mediumblue;
+    color: mediumblue;
+    font-weight: bold;
+    border-radius: 20px;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: 0.2s;
+    white-space: nowrap;
+}
+
+.edit-student-btn:hover,
+.edit-assessor-btn:hover {
+    background: darkblue;
+    color: white;
+    border-color: white;
+}
+
+.save-student-btn:hover,
+.save-assessor-btn:hover {
+    background: green;
+    color: white;
+    border-color: white;
+}
+
+.cancel-student-btn:hover,
+.cancel-assessor-btn:hover {
+    background: maroon;
+    color: white;
+    border-color: white;
+}
+
+.delete-student-btn:hover,
+.delete-assessor-btn:hover {
+    background: red;
+    color: white;
+    border-color: white;
+}
+
+
+/*-----------------------------------------------------------------------------------------*/
+/* LOGIN WRAPPER BOX */
+/*-----------------------------------------------------------------------------------------*/
+
+.wrapper {
+    position: fixed;
+    top: 25%;
+    left: 35%;
+    width: 400px;
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 20px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    transform: scale(0);
+    transition: transform .5s ease;
+    z-index: 100;
+}
+
+.wrapper.active-popup {
+    transform: scale(1);
+}
+
+.wrapper .form-box-login {
+    width: 100%;
+    padding: 40px;
+}
+
+.wrapper .icon-close {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 45px;
+    height: 45px;
+    background: black;
+    font-size: 2em;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-bottom-left-radius: 20px;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.wrapper .form-box-login h2 {
+    text-align: center;
+    font-size: 30px;
+    font-weight: bold;
+}
+
+.input-box {
+    position: relative;
+    width: 100%;
+    height: 50px;
+    border-bottom: 2px solid black;
+    margin: 20px 0;
+}
+
+.input-box label {
+    position: absolute;
+    top: 0%;
+    left: 5%;
+    font-size: 1em;
+    font-weight: 550;
+    font-family: Arial;
+    color: aliceblue;
+    pointer-events: none;
+}
+
+.input-box .icon {
+    position: relative;
+    right: 3px;
+    color: aliceblue;
+}
+
+.input-box input {
+    position: absolute;
+    top: 20%;
+    left: 0%;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: Arial;
+    font-size: 1em;
+    color: white;
+    font-weight: 500;
+    padding: 0 35px 0 5px;
+}
+
+.remember-forgot {
+    position: relative;
+    font-size: 0.9em;
+    font-weight: 500;
+    margin: 0 0 30px;
+    display: flex;
+    justify-content: space-between;
+    font-family: Arial;
+}
+
+.remember-forgot label {
+    margin-right: 10px;
+    font-weight: 500;
+    color: aliceblue;
+}
+
+.remember-forgot label input {
+    margin-right: 3px;
+}
+
+.remember-forgot a {
+    color: darkred;
+    text-decoration: none;
+}
+
+.remember-forgot a:hover {
+    text-decoration: underline;
+}
+
+.btn {
+    position: relative;
+    width: 100%;
+    height: 45px;
+    background: transparent;
+    border: 2px solid cyan;
+    outline: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1em;
+    color: aliceblue;
+    font-weight: 600;
+    transition: 0.5s;
+}
+
+.btn:hover {
+    background: mediumblue;
+}

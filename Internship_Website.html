@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Student Internship Evaluation</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="main">
+        <div class="navbar">
+            <div class="icon">
+                <h2 class="logo">University of Nottingham</h2>
+            </div>
+
+            <div class="menu">
+                <ul>
+                    <li><a href="#">DASHBOARD</a></li>
+                    <li><a href="#">LIST</a></li>
+                    <li><a href="#">EVALUATION</a></li>
+                    <li><a href="#">CONTACT</a></li>
+                </ul>
+            </div>
+
+            <div class="login">
+                <a href="#"> <button class="login_btn">LOGIN</button></a>
+            </div>
+        </div>
+
+        <div class="wrapper">
+            <span class="icon-close">
+                <ion-icon name="close-outline"></ion-icon>
+            </span>
+            <div class="form-box-login">
+                <h2>Login</h2>
+                <form action="#">
+                    <div class="input-box">
+                        <span class="icon"><ion-icon name="mail"></ion-icon></span>
+                        <input type="email" required>
+                        <label>Email</label>
+                    </div>
+                    <div class="input-box">
+                        <span class="icon"><ion-icon name="lock-closed"></ion-icon></span>
+                        <input type="password" required>
+                        <label>Password</label>
+                    </div>
+                    <div class="remember-forgot">
+                        <label><input type="checkbox">Remember me</label>
+                        <a href="#">Forgot Password</a>
+                    </div>
+                    <button type="submit" class="btn">Login</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="content">
+            <h1> Student Internship Evaluation</h1>
+
+            <div id="adminDashboard">
+                <div class="table-wrapper">
+                    <div class="table-header">
+                        <h2>📋Registered Accounts</h2>
+                        <button class="add-btn" id="addAccountBtn"> + Add new account</button>
+                    </div>
+                    <div class="scrollable-table">
+                        <table id="accountTable">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Password</th>
+                                    <th>User Role</th>
+                                    <th>Created at</th>
+                                </tr>
+                            </thead>
+                            <tbody id="registeredAccountsBody">
+                                <tr>
+                                    <td>admin</td>
+                                    <td>admin123@gmail.com</td>
+                                    <td>•••••••</td>
+                                    <td>Administrator</td>
+                                    <td>31/12/2025</td>
+                                </tr>
+                                <tr>
+                                    <td>jsmith</td>
+                                    <td>j.smith@office.com</td>
+                                    <td>•••••••</td>
+                                    <td>Assessor</td>
+                                    <td>10/01/2026</td>
+                                </tr>
+                                <tr>
+                                    <td>michaelb</td>
+                                    <td>m.b@student.org</td>
+                                    <td>•••••••</td>
+                                    <td>Student</td>
+                                    <td>15/01/2026</td>
+                                </tr>
+
+                                <tr>
+                                    <td>michaelbay</td>
+                                    <td>m.b@student.org</td>
+                                    <td>•••••••</td>
+                                    <td>Student</td>
+                                    <td>15/01/2026</td>
+                                </tr>
+
+                                <tr>
+                                    <td>michaelb</td>
+                                    <td>m.b@student.org</td>
+                                    <td>•••••••</td>
+                                    <td>Student</td>
+                                    <td>15/01/2026</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <div class="table-header">
+                        <h2>🧑‍🎓 Student Detail & Assignment</h2>
+                        <button class="add-btn" id="addStudentBtn"> + Add new student</button>
+                    </div>
+                    <div class="scrollable-table">
+                        <table id="studentTable">
+                            <thead>
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>Student Name</th>
+                                    <th>Programme</th>
+                                    <th>Internship Co.</th>
+                                    <th>Enrol. Year</th>
+                                    <th>Email</th>
+                                    <th>Contact</th>
+                                    <th>Status</th>
+                                    <th>Assigned Assessor</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentTableBody">
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <div class="table-header">
+                        <h2>👥 Assessors & Assigned students</h2>
+                        <button class="add-btn" id="addAssessorBtn"> + Add new assessor</button>
+                    </div>
+                    <div class="scrollable-table">
+                        <table id="assessorTable">
+                            <thead>
+                                <tr>
+                                    <th>Assessor ID</th>
+                                    <th>Assessor Name</th>
+                                    <th>Role</th>
+                                    <th>Department</th>
+                                    <th>Email</th>
+                                    <th>Contact</th>
+                                    <th>Assigned students</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assessorTableBody">
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <script src="script.js"></script>
+        <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+        <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+
+</body>
