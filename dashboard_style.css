@@ -156,7 +156,6 @@ ul li a:hover::after {
     height: auto;
     margin: auto;
     color: cyan;
-
 }
 
 .content h1 {
@@ -268,8 +267,6 @@ ul li a:hover::after {
 
 .scrollable-table td.action-cell {
     height: 100%;
-    align-items: center;
-    justify-content: center;
     background: none;
     border: none;
     display: flex;

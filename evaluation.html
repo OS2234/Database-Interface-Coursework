@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Internship Evaluation</title>
+    <link rel="stylesheet" href="dashboard_style.css">
+    <link rel="stylesheet" href="evaluation_style.css">
+    <style>
+    </style>
+</head>
+
+<body>
+    <div class="evaluation-page-wrapper">
+        <div class="navbar">
+            <div class="icon">
+                <h2 class="logo">University of Nottingham</h2>
+            </div>
+            <div class="menu">
+                <ul>
+                    <li><a href="Internship_Website.html">DASHBOARD</a></li>
+                    <li><a href="#" id="listLinkNav">LIST</a></li>
+                    <li><a href="evaluation.html" style="color: cyan;">EVALUATION</a></li>
+                    <li><a href="contact.html">CONTACT</a></li>
+                </ul>
+            </div>
+            <div class="login">
+                <div class="user-info" id="userInfo" style="display: none;">
+                    <span class="username" id="usernameDisplay"></span>
+                    <span class="user-role" id="userRoleDisplay"></span>
+                </div>
+                <button class="login_btn" id="loginBtn">LOGIN</button>
+            </div>
+        </div>
+
+        <div class="wrapper" id="loginPopupWrapper">
+            <span class="icon-close" id="iconClosePopup">
+                <ion-icon name="close-outline"></ion-icon>
+            </span>
+            <div class="form-box-login">
+                <h2>Login</h2>
+                <form id="evalLoginForm">
+                    <div class="input-box">
+                        <span class="icon"><ion-icon name="mail"></ion-icon></span>
+                        <input type="email" id="evalLoginEmail" required>
+                        <label>Email</label>
+                    </div>
+                    <div class="input-box">
+                        <span class="icon"><ion-icon name="lock-closed"></ion-icon></span>
+                        <input type="password" id="evalLoginPassword" required>
+                        <label>Password</label>
+                    </div>
+                    <div class="remember-forgot">
+                        <label><input type="checkbox">Remember me</label>
+                        <a href="#">Forgot Password</a>
+                    </div>
+                    <button type="submit" class="btn">Login</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="evaluation-content">
+            <div class="evaluation-container">
+                <h1>📋 Assessor & Student Evaluation</h1>
+
+                <div id="assessorSelectorContainer" class="assessor-selector">
+                    <label>👨‍🏫 Select Assessor:</label>
+                    <select id="assessorDropdown" class="assessor-dropdown">
+                        <option value="">-- Select an assessor --</option>
+                    </select>
+                </div>
+
+                <div id="studentsSection" class="students-section">
+                    <div class="students-title">🎓 Assigned Students</div>
+                    <div id="studentsListContainer" class="students-grid"></div>
+                </div>
+
+                <div id="marksDetailPanel" class="marks-panel" style="display: none;">
+                    <div class="panel-header">
+                        <ion-icon name="analytics-outline" style="font-size: 32px;"></ion-icon>
+                        <span>Performance Breakdown</span>
+                        <span id="selectedStudentNameSpan" class="student-badge"></span>
+                    </div>
+                    <div id="marksBreakdownContainer"></div>
+                    <div id="remarksSection"></div>
+                    <div id="totalScoreSection"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    <script src="evaluation_script.js"></script>
+</body>
+
+</html>

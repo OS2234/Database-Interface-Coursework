@@ -1,0 +1,288 @@
+.evaluation-page-wrapper {
+    min-height: 100vh;
+    width: 100%;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.5)50%, rgba(0, 0, 0, 0.5)50%), url('website_background.jpeg');
+    background-position: center;
+    background-size: cover;
+    position: relative;
+}
+
+.evaluation-content {
+    width: 1300px;
+    margin: auto;
+    padding: 30px 0 60px;
+}
+
+.evaluation-container {
+    background: rgba(0, 0, 0, 0.78);
+    border-radius: 32px;
+    padding: 35px 40px;
+    margin-top: 20px;
+    border: 2px solid rgba(0, 255, 255, 0.5);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.evaluation-container h1 {
+    color: cyan;
+    text-align: center;
+    font-size: 44px;
+    margin-bottom: 30px;
+}
+
+/*========================*/
+/* ASSESSOR DROPDOWN MENU */
+/*========================*/
+
+.assessor-selector {
+    margin-bottom: 15px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 16px;
+    padding: 20px;
+}
+
+.assessor-selector label {
+    display: block;
+    color: cyan;
+    border-left: 4px solid cyan;
+    padding-left: 15px;
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.assessor-dropdown {
+    width: 100%;
+    padding: 12px 20px;
+    font-size: 16px;
+    background: rgba(20, 40, 60, 0.9);
+    border: 2px solid cyan;
+    border-radius: 12px;
+    color: white;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.assessor-dropdown:hover {
+    background: rgba(0, 200, 200, 0.3);
+}
+
+.assessor-dropdown option {
+    background: #0a1e2d;
+    color: white;
+    padding-left: 10px;
+}
+
+/*===========================*/
+/* ASSIGNED STUDENTS DISPLAY */
+/*===========================*/
+.students-section {
+    margin-top: 25px;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 16px;
+    display: none;
+}
+
+.students-section.visible {
+    display: block;
+}
+
+.students-title {
+    color: #ffd966;
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    border-left: 4px solid cyan;
+    padding-left: 15px;
+}
+
+.students-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.no-students {
+    color: #aaa;
+    font-style: italic;
+    padding: 20px;
+    text-align: center;
+}
+
+
+.students-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.student-chip {
+    background: rgba(0, 200, 200, 0.2);
+    border: 1px solid cyan;
+    border-radius: 40px;
+    padding: 8px 20px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+    font-size: 15px;
+}
+
+.student-chip:hover {
+    background: cyan;
+    color: #001f3f;
+    transform: scale(1.02);
+    box-shadow: 0 0 8px cyan;
+}
+
+.student-chip.active-student {
+    background: cyan;
+    color: #001f3f;
+    border-color: white;
+}
+
+/*=====================*/
+/* STUDENT MARKS PANEL */
+/*=====================*/
+.marks-panel {
+    margin-top: 45px;
+    background: rgba(0, 20, 40, 0.85);
+    border-radius: 28px;
+    padding: 25px 30px;
+    border: 1px solid cyan;
+    transition: 0.3s;
+}
+
+.panel-header {
+    font-size: 28px;
+    font-weight: bold;
+    color: cyan;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.student-badge {
+    background: #005f73;
+    padding: 6px 18px;
+    border-radius: 40px;
+    font-size: 20px;
+    color: white;
+}
+
+/*============*/
+/* MARKS GRID */
+/*============*/
+
+.marks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    margin: 25px 0;
+}
+
+.criteria-card {
+    background: none;
+    border-radius: 20px;
+    padding: 18px;
+    border: 2px solid cyan;
+}
+
+.criteria-name {
+    font-size: 20px;
+    font-weight: bold;
+    color: #f0f0f0;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.criteria-weight {
+    color: cyan;
+    font-size: 14px;
+}
+
+.score-value {
+    font-size: 26px;
+    font-weight: bold;
+    color: #ffb347;
+}
+
+.criterion-percentage {
+    margin-top: 4px;
+    font-size: 22px;
+    font-weight: bold;
+    color: #92fe9d;
+}
+
+.progress-bar-container {
+    display: flex;
+    background: #2c3e44;
+    border-radius: 30px;
+    height: 18px;
+    margin: 12px 0;
+    overflow: hidden;
+}
+
+.progress-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #00c9ff, #92fe9d);
+    border-radius: 30px;
+    display: flex;
+    padding-right: 12px;
+    transition: width 0.5s ease;
+}
+
+/*================*/
+/* REMARKS SECTION*/
+/*================*/
+.remarks-box {
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 20px;
+    padding: 16px 20px;
+    margin-top: 20px;
+    border: 1px solid #33ccff;
+}
+
+.remarks-title {
+    color: cyan;
+    font-weight: bold;
+    font-size: 18px;
+    margin-bottom: 8px;
+}
+
+.remarks-text {
+    color: #e6f7ff;
+    font-style: italic;
+    font-size: 16px;
+}
+
+/*===============*/
+/* OVERALL SCORE */
+/*===============*/
+.total-score {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid cyan;
+}
+
+.total-number {
+    font-size: 32px;
+    font-weight: bold;
+    color: #ffaa44;
+}
+
+
+@media (max-width: 1100px) {
+    .evaluation-content {
+        width: 95%;
+    }
+
+    .evaluation-container {
+        padding: 20px;
+    }
+}

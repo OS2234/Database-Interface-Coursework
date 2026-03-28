@@ -32,7 +32,6 @@ function setTableHeightToTwoRows() {
             const firstRowHeight = rows[0].offsetHeight;
             const secondRowHeight = rows[1].offsetHeight;
 
-            const maxRowHeight = Math.max(firstRowHeight, secondRowHeight);
             const totalHeight = headerHeight + firstRowHeight + secondRowHeight + 1.5;
 
             tableContainer.style.maxHeight = totalHeight + 'px';
@@ -151,6 +150,47 @@ function loadDataFromLocalStorage() {
     return false;
 }
 
+// ============================================
+// LOGIN PERSISTENCE - CROSS-PAGE SESSION
+// ============================================
+
+const userInfo = document.getElementById('userInfo');
+const usernameDisplay = document.getElementById('usernameDisplay');
+const userRoleDisplay = document.getElementById('userRoleDisplay');
+
+// Check if user is already logged in from another page
+function checkExistingLogin() {
+    const loggedInUser = sessionStorage.getItem('loggedInUser');
+    if (loggedInUser) {
+        try {
+            const user = JSON.parse(loggedInUser);
+            if (userInfo && usernameDisplay && userRoleDisplay) {
+                usernameDisplay.textContent = user.username;
+                userRoleDisplay.textContent = user.userRole;
+                userInfo.style.display = 'flex';
+                const loginBtn = document.querySelector('.login_btn');
+                if (loginBtn) {
+                    loginBtn.textContent = 'LOGOUT';
+                    loginBtn.classList.add('logout-state');
+                }
+                // Close login popup if it's open
+                if (wrapper) {
+                    wrapper.classList.remove('active-popup');
+                }
+            }
+        } catch (e) {
+            console.error('Error parsing logged in user:', e);
+        }
+    }
+}
+
+function saveLoginState(user) {
+    sessionStorage.setItem('loggedInUser', JSON.stringify(user));
+}
+
+function clearLoginState() {
+    sessionStorage.removeItem('loggedInUser');
+}
 
 // ============================================
 // ADMIN DASHBOARD FUNCTIONALITY
@@ -172,6 +212,11 @@ function renderAllTables() {
     renderAccountTable();
     renderStudentTable();
     renderAssessorTable();
+
+    attachRowSelectionHandler(accountTbody);
+    attachRowSelectionHandler(studentTbody);
+    attachRowSelectionHandler(assessorTbody);
+
     saveDataToLocalStorage();
 }
 
@@ -190,50 +235,26 @@ const loginForm = document.querySelector('.form-box-login form');
 //=====================================================================================
 
 function clearAllTableSelections() {
-    const allTables = document.querySelectorAll('.scrollable-table tbody');
-    allTables.forEach(tableBody => {
+    const allTableBodies = [accountTbody, studentTbody, assessorTbody];
+    allTableBodies.forEach(tableBody => {
         if (tableBody) {
             const rows = tableBody.querySelectorAll('tr');
-            rows.forEach(row => row.classList.remove('selected-row'));
+            rows.forEach(row => {
+                row.classList.remove('selected-row');
+            });
         }
     });
 }
 
-function clearAllSelections(tableBody) {
-    if (!tableBody) return;
-    const rows = tableBody.querySelectorAll('tr');
-    rows.forEach(row => row.classList.remove('selected-row'));
-}
 
 function setupClickOutsideDetection() {
-    const tableRows = document.querySelectorAll('.scrollable-table td');
-    const action_cell = document.querySelectorAll('.action-cell');
-
     document.addEventListener('click', function (event) {
-        let clickedInsideRow = false;
+        const isOnTableRow = event.target.closest('.scrollable-table tbody tr');
+        const isOnAddButton = event.target.closest('.add-btn');
+        const isOnTableCellButton = event.target.closest('.table-btn');
 
-        tableRows.forEach(row => {
-            if (row.contains(event.target)) {
-                clickedInsideRow = true;
-            }
-        });
-
-        action_cell.forEach(cell => {
-            if (cell.contains(event.target)) {
-                clickedInsideRow = false;
-            }
-        });
-
-        const addButtons = document.querySelectorAll('.add-btn');
-        let clickedOnButton = false;
-
-        addButtons.forEach(btn => {
-            if (btn.contains(event.target)) {
-                clickedOnButton = true;
-            }
-        });
-
-        if (!clickedInsideRow && !clickedOnButton) {
+        // If click is not on a table row and not on add button, clear selections
+        if (!isOnTableRow && !isOnAddButton && !isOnTableCellButton) {
             clearAllTableSelections();
         }
     });
@@ -242,8 +263,12 @@ function setupClickOutsideDetection() {
 function attachRowSelectionHandler(tableBody) {
     if (!tableBody) return;
     const rows = tableBody.querySelectorAll('tr');
+
     rows.forEach(row => {
-        row.removeEventListener('click', row._clickHandler);
+        if (row._clickHandler) {
+            row.removeEventListener('click', row._clickHandler);
+        }
+
         const handler = (e) => {
             if (e.target.closest('.table-btn') ||
                 e.target.closest('button') ||
@@ -252,7 +277,7 @@ function attachRowSelectionHandler(tableBody) {
                 e.target.closest('.add-cancel-btn')) {
                 return;
             }
-            clearAllSelections(tableBody);
+            clearAllTableSelections();
             row.classList.add('selected-row');
         };
         row._clickHandler = handler;
@@ -269,10 +294,10 @@ let accountList = [];
 let isAccountAddFormVisible = false;
 
 const demoRegisteredAccounts = [
-    { username: 'John', email: 'admin123@gmail.com', password: '123456', userRole: 'Administrator', createdAt: '31/12/2025' },
-    { username: 'John Smith', email: 'admin124@gmail.com', password: '123457', userRole: 'Administrator', createdAt: '31/11/2025' },
-    { username: 'Alan Walker', email: 'admin125@gmail.com', password: '123458', userRole: 'Administrator', createdAt: '31/10/2025' },
-    { username: 'Mark Kiplier', email: 'admin126@gmail.com', password: '123459', userRole: 'Administrator', createdAt: '30/9/2025' }
+    { username: 'John', email: 'admin123@gmail.com', password: '123456', userRole: 'Administrator', contact: '011 672 9343', createdAt: '31/12/2025' },
+    { username: 'John Smith', email: 'admin124@gmail.com', password: '123457', userRole: 'Administrator', contact: '016 832 7170', createdAt: '31/11/2025' },
+    { username: 'Alan Walker', email: 'admin125@gmail.com', password: '123458', userRole: 'Administrator', contact: '016 874 1944', createdAt: '31/10/2025' },
+    { username: 'Mark Kiplier', email: 'admin126@gmail.com', password: '123459', userRole: 'Administrator', contact: '016 274 3974', createdAt: '30/9/2025' }
 ]
 
 // SORT BY USERNAME ALPHABETICAL ORDER
@@ -288,9 +313,10 @@ function insertAccountAddForm() {
 
     addRow.innerHTML = `
         <td><input type="text" id="add_account_username" placeholder="Username" style="width:80px"></td>
-        <td><input type="text" id="add_account_email" placeholder="Email" style="width:110px"></td>
+        <td><input type="email" id="add_account_email" placeholder="Email" style="width:110px"></td>
         <td><input type="text" id="add_account_password" placeholder="Password" style="width:110px"></td>
         <td><input type="text" id="add_account_role" placeholder="User Role" style="width:110px"></td>
+        <td><input type="text" id="add_account_contact" placeholder="Contact" style="width:110px"></td>
         <td><input type="text" id="add_account_date" placeholder="Date" style="width:70px"></td>
         <td class="action-cell">
             <div class="action-buttons">
@@ -325,18 +351,20 @@ function saveAccountAdd() {
         email: document.getElementById('add_account_email').value.trim(),
         password: document.getElementById('add_account_password').value.trim(),
         userRole: document.getElementById('add_account_role').value.trim(),
+        contact: document.getElementById('add_account_contact').value.trim(),
         createdAt: document.getElementById('add_account_date').value.trim()
     };
 
     accountList.push(newAccount);
     isAccountAddFormVisible = false;
     renderAllTables();
+
 }
 
 // CANCEL ADDING NEW ACCOUNTS
 function cancelAccountAdd() {
     isAccountAddFormVisible = false;
-    renderAccountTable();
+    renderAllTables();
 }
 
 // ONLY ONE ADD FORM IS OPEN AT A TIME
@@ -366,7 +394,7 @@ function renderAccountTable() {
     sortAccountList();
 
     if (accountList.length === 0) {
-        accountTbody.innerHTML = `<tr><td colspan="5" style="color:darkblue; background:lightcyan; text-align:center; padding:5px;">No accounts added yet. Click "Add new account" to begin.</td></tr>`;
+        accountTbody.innerHTML = `<tr><td colspan="6" style="color:darkblue; background:lightcyan; text-align:center; padding:5px;">No accounts added yet. Click "Add new account" to begin.</td></tr>`;
         afterTableRender();
         return;
     }
@@ -378,6 +406,7 @@ function renderAccountTable() {
             <td>${account.email || '—'}</td>
             <td>${account.password || '—'}</td>
             <td>${account.userRole || '—'}</td>
+            <td>${account.contact || '—'}</td>
             <td>${account.createdAt || '—'}</td>
 
             <td class="action-cell">
@@ -388,8 +417,6 @@ function renderAccountTable() {
     });
 
     accountTbody.innerHTML = html;
-
-    attachRowSelectionHandler(accountTbody);
 
     if (isAccountAddFormVisible) {
         insertAccountAddForm();
@@ -420,9 +447,10 @@ function enableEditAccountRow(index) {
 
     row.innerHTML = `
         <td><input type="text" value="${account.username || ''}" id="edit_account_username_${index}" style="width:70px; padding:3px;"></td>
-        <td><input type="text" value="${account.email || ''}" id="edit_account_email_${index}" style="width:100px; padding:3px;"></td>
+        <td><input type="email" value="${account.email || ''}" id="edit_account_email_${index}" style="width:100px; padding:3px;"></td>
         <td><input type="text" value="${account.password || ''}" id="edit_account_password_${index}" style="width:100px; padding:3px;"></td>
         <td><input type="text" value="${account.userRole || ''}" id="edit_account_role_${index}" style="width:100px; padding:3px;"></td>
+        <td><input type="text" value="${account.contact || ''}" id="edit_account_contact_${index}" style="width:100px; padding:3px;"></td>
         <td><input type="text" value="${account.createdAt || ''}" id="edit_account_date_${index}" style="width:70px; padding:3px;"></td>
 
         <td class="action-cell">
@@ -432,7 +460,7 @@ function enableEditAccountRow(index) {
     `;
 
     document.getElementById(`save-account-btn-${index}`).addEventListener('click', () => saveAccountEdit(index));
-    document.getElementById(`cancel-account-btn-${index}`).addEventListener('click', () => renderAccountTable());
+    document.getElementById(`cancel-account-btn-${index}`).addEventListener('click', () => renderAllTables());
 }
 
 // SAVE ACCOUNT DETAIL CHANGES
@@ -442,11 +470,13 @@ function saveAccountEdit(index) {
         email: document.getElementById(`edit_account_email_${index}`).value,
         password: document.getElementById(`edit_account_password_${index}`).value,
         userRole: document.getElementById(`edit_account_role_${index}`).value,
+        contact: document.getElementById(`edit_account_contact_${index}`).value,
         createdAt: document.getElementById(`edit_account_date_${index}`).value
     };
 
     accountList[index] = newAccount;
     renderAllTables();
+
 }
 
 // DELETE SPECIFIC ACCOUNT ROWS
@@ -557,7 +587,7 @@ function saveStudentAdd() {
 // CANCEL ADDING NEW STUDENT
 function cancelStudentAdd() {
     isStudentAddFormVisible = false;
-    renderStudentTable();
+    renderAllTables();;
 }
 
 // ONLY ONE ADD FORM IS OPENED AT A TIME
@@ -613,8 +643,6 @@ function renderStudentTable() {
 
     studentTbody.innerHTML = html;
 
-    attachRowSelectionHandler(studentTbody);
-
     if (isStudentAddFormVisible) {
         insertStudentAddForm();
     }
@@ -660,7 +688,7 @@ function enableEditStudentRow(index) {
     `;
 
     document.getElementById(`save-student-btn-${index}`).addEventListener('click', () => saveStudentEdit(index));
-    document.getElementById(`cancel-student-btn-${index}`).addEventListener('click', () => renderStudentTable());
+    document.getElementById(`cancel-student-btn-${index}`).addEventListener('click', () => renderAllTables());
 }
 
 // SAVE STUDENT DETAILS CHANGES
@@ -788,7 +816,7 @@ function saveAssessorAdd() {
 // CANCEL ADDING NEW ASSESSOR
 function cancelAssessorAdd() {
     isAssessorAddFormVisible = false;
-    renderAssessorTable();
+    renderAllTables();
 }
 
 // ONLY ONE ADD FORM IS OPENED AT A TIME
@@ -861,8 +889,6 @@ function renderAssessorTable() {
         insertAssessorAddForm();
     }
 
-    attachRowSelectionHandler(assessorTbody);
-
     afterTableRender();
 
 
@@ -903,7 +929,7 @@ function enableEditAssessorRow(index) {
     `;
 
     document.getElementById(`save-assessor-btn-${index}`).addEventListener('click', () => saveAssessorEdit(index));
-    document.getElementById(`cancel-assessor-btn-${index}`).addEventListener('click', () => renderAssessorTable());
+    document.getElementById(`cancel-assessor-btn-${index}`).addEventListener('click', () => renderAllTables());
 }
 
 // SAVE ASSESSOR DETAILS CHANGES
@@ -962,22 +988,37 @@ document.addEventListener('DOMContentLoaded', function () {
             const enteredEmail = emailInput.value.trim();
             const enteredPassword = passwordInput.value.trim();
 
+            // Make sure accountList is loaded
+            if (accountList.length === 0) {
+                loadDataFromLocalStorage();
+            }
+
             const matchedAccount = accountList.find(account =>
                 account.email === enteredEmail &&
                 account.password === enteredPassword
             );
 
             if (matchedAccount) {
-                wrapper.classList.remove('active-popup');
+                if (wrapper) {
+                    wrapper.classList.remove('active-popup');
+                }
 
-                const loginBtn = document.querySelector('.login_btn');
-                if (loginBtn && userInfo && usernameDisplay && userRoleDisplay) {
+                if (userInfo && usernameDisplay && userRoleDisplay) {
                     usernameDisplay.textContent = matchedAccount.username;
                     userRoleDisplay.textContent = matchedAccount.userRole;
                     userInfo.style.display = 'flex';
-                    loginBtn.textContent = 'LOGOUT';
-                    loginBtn.classList.add('logout-state');
+                    const loginBtn = document.querySelector('.login_btn');
+                    if (loginBtn) {
+                        loginBtn.textContent = 'LOGOUT';
+                        loginBtn.classList.add('logout-state');
+                    }
                 }
+
+                saveLoginState({
+                    username: matchedAccount.username,
+                    email: matchedAccount.email,
+                    userRole: matchedAccount.userRole
+                });
 
                 alert(`Logged in successfully as ${matchedAccount.username} (${matchedAccount.userRole})`);
 
@@ -993,17 +1034,29 @@ document.addEventListener('DOMContentLoaded', function () {
     if (loginBtn) {
         loginBtn.addEventListener('click', function () {
             if (this.textContent === 'LOGOUT') {
-                userInfo.style.display = 'none';
+                if (userInfo) {
+                    userInfo.style.display = 'none';
+                }
                 this.textContent = 'LOGIN';
                 this.classList.remove('logout-state');
                 if (wrapper) {
                     wrapper.classList.remove('active-popup');
                 }
+                clearLoginState();
                 alert('Logged out successfully');
-
+            } else {
+                if (wrapper) {
+                    wrapper.classList.add('active-popup');
+                }
+                const emailInput = document.querySelector('.wrapper input[type="email"]');
+                const passwordInput = document.querySelector('.wrapper input[type="password"]');
+                if (emailInput) emailInput.value = '';
+                if (passwordInput) passwordInput.value = '';
             }
         });
     }
+
+    checkExistingLogin();
 
     setTimeout(() => {
         setTableHeightToTwoRows();
