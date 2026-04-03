@@ -131,9 +131,9 @@ function loadEvaluations() {
     }
 }
 
-// ============================================
+// ======================
 // LOGIN MANAGEMENT
-// ============================================
+// ======================
 function checkLogin() {
     const loggedIn = sessionStorage.getItem('loggedInUser');
     if (!loggedIn) {
@@ -202,9 +202,9 @@ function logout() {
     alert('Logged out successfully');
 }
 
-// ============================================
+// ===========
 // SETUPS
-// ============================================
+// ===========
 function setupLoginForm() {
     const form = document.querySelector('.form-box-login form');
     if (!form) return;
@@ -279,9 +279,9 @@ function setupEventListeners() {
     }
 }
 
-// ============================================
+// ======================
 // INITIALIZATION
-// ============================================
+// ======================
 
 function initData() {
     const loaded = loadDataFromLocalStorage();
@@ -318,9 +318,9 @@ function renderAllTables() {
 }
 
 
-//===============================================================================
-//SELECT ROWS FUNCTION
-//=====================================================================================
+//=============================
+// SELECT ROWS FUNCTION
+//=============================
 
 function clearAllSelections() {
     document.querySelectorAll('.scrollable-table tbody tr').forEach(row => {
@@ -350,7 +350,6 @@ function setupRowDelegation() {
 // ============================================
 let isAccountAddFormVisible = false;
 
-// INSERT NEW ROW TO ADD NEW ACCOUNT DETAILS
 function insertAccountAddForm() {
     const addRow = document.createElement('tr');
     addRow.className = 'add-form-row';
@@ -381,7 +380,6 @@ function insertAccountAddForm() {
     document.getElementById('cancelAccountAddBtn').addEventListener('click', cancelAccountAdd);
 }
 
-// SAVE NEW ACCOUNT DETAILS
 function saveAccountAdd() {
     const newUsername = document.getElementById('add_account_username').value.trim();
 
@@ -433,13 +431,11 @@ function saveAccountAdd() {
     renderAllTables();
 }
 
-// CANCEL ADDING NEW ACCOUNTS
 function cancelAccountAdd() {
     isAccountAddFormVisible = false;
     renderAllTables();
 }
 
-// ONLY ONE ADD FORM IS OPEN AT A TIME
 function addNewAccount() {
     if (isAccountAddFormVisible) return;
 
@@ -459,7 +455,6 @@ function addNewAccount() {
     renderAccountTable();
 }
 
-// RENDER REGISTERED ACCOUNT TABLE
 function renderAccountTable() {
     if (!DOM.accountTbody) return;
 
@@ -506,7 +501,6 @@ function renderAccountTable() {
     });
 }
 
-// EDIT ACCOUNT DETAILS FOR EACH ROW
 function enableEditAccountRow(index) {
     const account = accountList[index];
     const row = DOM.accountTbody.querySelector(`tr[data-account-index="${index}"]`);
@@ -530,7 +524,6 @@ function enableEditAccountRow(index) {
     document.getElementById(`cancel-account-btn-${index}`).addEventListener('click', () => renderAllTables());
 }
 
-// SAVE ACCOUNT DETAIL CHANGES
 function saveAccountEdit(index) {
     const oldAccount = accountList[index];
 
@@ -586,7 +579,6 @@ function saveAccountEdit(index) {
     renderAllTables();
 }
 
-// DELETE SPECIFIC ACCOUNT ROWS
 function deleteAccount(index) {
     if (confirm('Are you sure you want to delete this account?')) {
         const deletedAccount = accountList[index];
@@ -608,7 +600,6 @@ function deleteAccount(index) {
 
 let isStudentAddFormVisible = false;
 
-// INSERT NEW ROW TO ADD NEW STUDENT DETAILS
 function insertStudentAddForm() {
     const addRow = document.createElement('tr');
     addRow.className = 'add-form-row';
@@ -657,7 +648,6 @@ function insertStudentAddForm() {
     document.getElementById('add_student_id').focus();
 }
 
-// SAVE NEW STUDENT DETAILS
 function saveStudentAdd() {
     const newId = document.getElementById('add_student_id').value.trim();
     const newName = document.getElementById('add_student_name').value.trim();
@@ -731,14 +721,11 @@ function saveStudentAdd() {
     renderAllTables();
 }
 
-
-// CANCEL ADDING NEW STUDENT
 function cancelStudentAdd() {
     isStudentAddFormVisible = false;
     renderAllTables();;
 }
 
-// ONLY ONE ADD FORM IS OPENED AT A TIME
 function addNewStudent() {
     if (isStudentAddFormVisible) return;
 
@@ -776,7 +763,6 @@ function attachStudentDropdownListeners() {
     });
 }
 
-// Handle status change
 function handleStatusChange(e) {
     const index = parseInt(e.target.getAttribute('data-student-index'));
     const newStatus = e.target.value;
@@ -817,7 +803,6 @@ function handleStatusChange(e) {
     }
 }
 
-// Handle assessor assignment change
 function handleAssessorChange(e) {
     const index = parseInt(e.target.getAttribute('data-student-index'));
     const newAssessorName = e.target.value;
@@ -871,7 +856,6 @@ function handleAssessorChange(e) {
     }
 }
 
-// RENDER STUDENT TABLE
 function renderStudentTable() {
     if (!DOM.studentTbody) return;
 
@@ -922,7 +906,6 @@ function renderStudentTable() {
     });
 }
 
-// EDIT STUDENT DETAILS FOR EACH ROW
 function enableEditStudentRow(index) {
     const student = studentList[index];
     const row = DOM.studentTbody.querySelector(`tr[data-student-index="${index}"]`);
@@ -980,7 +963,6 @@ function enableEditStudentRow(index) {
     document.getElementById(`cancel-student-btn-${index}`).addEventListener('click', () => renderAllTables());
 }
 
-// SAVE STUDENT DETAILS CHANGES
 function saveStudentEdit(index) {
     const startDate = document.getElementById(`edit_start_${index}`).value;
     const endDate = document.getElementById(`edit_end_${index}`).value;
@@ -1046,7 +1028,6 @@ function saveStudentEdit(index) {
     renderAllTables();
 }
 
-// DELETE STUDENT DETAILS
 function deleteStudent(index) {
     if (confirm('Are you sure you want to delete this student?')) {
         studentList.splice(index, 1);
@@ -1060,7 +1041,6 @@ function deleteStudent(index) {
 
 let isAssessorAddFormVisible = false;
 
-// INSERT NEW ROW FOR ADDING NEW ASSESSOR DETAILS
 function insertAssessorAddForm() {
     const addRow = document.createElement('tr');
     addRow.className = 'add-form-row';
@@ -1106,7 +1086,6 @@ function isStudentAlreadyAssigned(studentId, excludeAssessorId = null) {
     return null;
 }
 
-// SAVE NEW ASSESSOR DETAILS
 function saveAssessorAdd() {
     const newId = document.getElementById('add_assessor_id').value.trim();
     const newName = document.getElementById('add_assessor_name').value.trim();
@@ -1133,7 +1112,7 @@ function saveAssessorAdd() {
     const studentIdsArray = studentIdsInput ? studentIdsInput.split(',').map(id => id.trim()) : [];
 
     for (const studentId of studentIdsArray) {
-        const existingAssessorName = isStudentAlreadyAssignedToAssessor(studentId);
+        const existingAssessorName = isStudentAlreadyAssigned(studentId);
         if (existingAssessorName) {
             const student = studentList.find(s => s.id === studentId);
             alert(`Student ${studentId} (${student ? student.name : 'Unknown'}) is already assigned to assessor "${existingAssessorName}".`);
@@ -1165,13 +1144,11 @@ function saveAssessorAdd() {
     renderAllTables();
 }
 
-// CANCEL ADDING NEW ASSESSOR
 function cancelAssessorAdd() {
     isAssessorAddFormVisible = false;
     renderAllTables();
 }
 
-// ONLY ONE ADD FORM IS OPENED AT A TIME
 function addNewAssessor() {
     if (isAssessorAddFormVisible) return;
 
@@ -1191,7 +1168,6 @@ function addNewAssessor() {
     renderAssessorTable();
 }
 
-// RENDER ASSESSOR TABLE
 function renderAssessorTable() {
     if (!DOM.assessorTbody) return;
 
@@ -1269,7 +1245,6 @@ function syncAssignedStudentIds() {
     saveDataToLocalStorage();
 }
 
-// EDIT ASSESSOR DETAILS FOR EACH ROW
 function enableEditAssessorRow(index) {
     const assessor = assessorList[index];
     const row = DOM.assessorTbody.querySelector(`tr[data-assessor-index="${index}"]`);
@@ -1293,7 +1268,6 @@ function enableEditAssessorRow(index) {
     document.getElementById(`cancel-assessor-btn-${index}`).addEventListener('click', () => renderAllTables());
 }
 
-// SAVE ASSESSOR DETAILS CHANGES
 function saveAssessorEdit(index) {
     const studentIdsInput = document.getElementById(`edit_assessor_students_${index}`).value;
     const studentIdsArray = studentIdsInput ? studentIdsInput.split(',').map(id => id.trim()) : [];
@@ -1342,7 +1316,6 @@ function saveAssessorEdit(index) {
     renderAllTables();
 }
 
-// DELETE ASSESSOR DETAILS
 function deleteAssessor(index) {
     if (confirm('Are you sure you want to delete this assessor?')) {
         assessorList.splice(index, 1);
@@ -1479,8 +1452,9 @@ function escapeHtml(str) {
         return m;
     });
 }
+
 // ============================================
-/* BEGIN INITIALIZATION */
+// BEGIN INITIALIZATION */
 // =============================================
 
 function init() {

@@ -235,5 +235,4 @@ function init() {
     checkLogin();
 }
 
-// Start the application
 init();

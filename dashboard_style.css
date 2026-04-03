@@ -1,29 +1,24 @@
-/*-----------------------------------------------------------------------------------------*/
-/* CONTENT AREA */
-/*-----------------------------------------------------------------------------------------*/
-
 .content h1 {
+    color: var(--primary-cyan);
     font-size: 50px;
     font-family: Arial;
     padding-top: 10px;
     font-weight: bold;
     margin-bottom: 30px;
-
 }
 
-/*====================================================*/
-/* DASHBOARD TABLE */
-/*====================================================*/
-
+/* Table Wrappers */
 .table-wrapper {
     margin-bottom: 10px;
 }
 
 .table-header h2 {
+    color: var(--primary-cyan);
     font-size: 46px;
     margin-bottom: 10px;
 }
 
+/* Assigned Students List */
 .assigned-list {
     display: flex;
     flex-direction: column;
@@ -42,46 +37,7 @@
     text-align: left;
 }
 
-/*-----------------------------------------------------------------------------------------*/
-/* SELECTED ROWS */
-/*-----------------------------------------------------------------------------------------*/
-
-.scrollable-table tbody tr.selected-row td {
-    background: rgba(0, 255, 255, 0.6);
-    box-shadow: inset 0 0 0 2px cyan;
-    color: #003366;
-    font-weight: bold;
-}
-
-.scrollable-table tbody tr.selected-row td.action-cell {
-    background: none;
-    box-shadow: none;
-}
-
-.scrollable-table td.action-cell {
-    height: 100%;
-    background: none;
-    border: none;
-    display: flex;
-    gap: 8px;
-}
-
-tr.selected-row #edit-account-btn,
-tr.selected-row #delete-account-btn,
-tr.selected-row #edit-student-btn,
-tr.selected-row #delete-student-btn,
-tr.selected-row #edit-assessor-btn,
-tr.selected-row #delete-assessor-btn,
-tr.selected-row #evaluate-btn,
-tr.selected-row #view-btn {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-}
-
-/*-----------------------------------------------------------------------------------------*/
-/* ADD NEW ROWS */
-/*-----------------------------------------------------------------------------------------*/
+/* Add New Rows */
 .add-form-row td {
     background: rgba(0, 255, 255, 0.15);
     padding: 8px 12px;
@@ -98,7 +54,6 @@ tr.selected-row #view-btn {
 .add-form-row .action-buttons {
     display: flex;
     gap: 8px;
-
 }
 
 .add-cancel-btn,
@@ -117,17 +72,13 @@ tr.selected-row #view-btn {
 
 .add-save-btn:hover {
     background: #2e7d32;
-    color: white;
 }
 
 .add-cancel-btn:hover {
     background: #b23c1c;
-    color: white;
 }
 
-/*-----------------------------------------------------------------------------------------*/
-/* TABLE BUTTONS */
-/*-----------------------------------------------------------------------------------------*/
+/* Add Button */
 .add-btn {
     background: transparent;
     border: 2px solid cyan;
@@ -145,6 +96,7 @@ tr.selected-row #view-btn {
     border-color: aqua;
 }
 
+/* Table Action Buttons */
 .table-btn {
     background: transparent;
     border: 1.5px solid white;
@@ -160,89 +112,63 @@ tr.selected-row #view-btn {
 
 #edit-account-btn,
 #edit-student-btn,
-#edit-assessor-btn {
-    color: white;
-    border-color: white;
+#edit-assessor-btn,
+#delete-account-btn,
+#delete-student-btn,
+#delete-assessor-btn,
+#evaluate-btn,
+#view-btn {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
+}
 
+tr.selected-row #edit-account-btn,
+tr.selected-row #delete-account-btn,
+tr.selected-row #edit-student-btn,
+tr.selected-row #delete-student-btn,
+tr.selected-row #edit-assessor-btn,
+tr.selected-row #delete-assessor-btn,
+tr.selected-row #evaluate-btn,
+tr.selected-row #view-btn {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
 }
 
 #edit-account-btn:hover,
 #edit-student-btn:hover,
 #edit-assessor-btn:hover {
     background: darkblue;
-    color: white;
-    border-color: white;
-}
-
-#delete-account-btn,
-#delete-student-btn,
-#delete-assessor-btn {
-    color: white;
-    border-color: white;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
 }
 
 #delete-account-btn:hover,
 #delete-student-btn:hover,
 #delete-assessor-btn:hover {
     background: red;
-    color: white;
-    border-color: white;
+}
+
+#evaluate-btn:hover {
+    background: #073f20;
+}
+
+#view-btn:hover {
+    background: #a5aa17;
 }
 
 [id^="save-account-btn"]:hover,
 [id^="save-student-btn"]:hover,
 [id^="save-assessor-btn"]:hover {
     background: green;
-    color: white;
-    border-color: white;
 }
 
 [id^="cancel-account-btn"]:hover,
 [id^="cancel-student-btn"]:hover,
 [id^="cancel-assessor-btn"]:hover {
     background: maroon;
-    color: white;
-    border-color: white;
 }
 
-#evaluate-btn {
-    color: white;
-    border-color: white;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-}
-
-#evaluate-btn:hover {
-    background: #073f20;
-    color: white;
-    border-color: white;
-}
-
-#view-btn {
-    color: white;
-    border-color: white;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-}
-
-#view-btn:hover {
-    background: #a5aa17;
-    color: white;
-    border-color: white;
-}
-
-
-/*==========================================*/
-/*==========================================*/
-
+/* Assessor Dashboard */
 .assessor-welcome {
     background: rgba(0, 255, 255, 0.15);
     border-radius: 20px;
@@ -269,6 +195,14 @@ tr.selected-row #view-btn {
     justify-content: space-between;
     margin-bottom: 10px;
     width: 350px;
+    color: var(--primary-cyan);
+}
+
+.table-wrapper .scrollable-table td.action-cell {
+    background: none;
+    border: none;
+    box-shadow: none;
+    padding: 0px;
 }
 
 .badge {
@@ -279,66 +213,20 @@ tr.selected-row #view-btn {
 }
 
 .pending-count {
-    background: #ff9800;
+    background: var(--warning);
     color: #fff;
 }
 
 .completed-count {
-    background: #4caf50;
+    background: var(--success);
     color: #fff;
-}
-
-.evaluate-btn,
-.view-btn {
-    background: none;
-    border: #fff solid 1px;
-    border-radius: 20px;
-    padding: 6px 16px;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-    transition: 0.3s;
-}
-
-.evaluate-btn:hover,
-.view-btn:hover {
-    transform: translateY(-2px);
-    background-color: #4caf50;
-}
-
-.status-pending {
-    color: #ff9800;
-    font-weight: bold;
-}
-
-.status-completed {
-    color: #4caf50;
-    font-weight: bold;
-}
-
-.score-high {
-    color: #4caf50;
-    font-weight: bold;
-}
-
-.score-medium {
-    color: #ff9800;
-    font-weight: bold;
-}
-
-.score-low {
-    color: #f44336;
-    font-weight: bold;
 }
 
 #assessorDashboard {
     display: none;
 }
 
-/*=============================*/
-/*=============================*/
-
-/* Dropdown styles for student table */
+/* Dropdown styles */
 .edit-dropdown,
 .add-dropdown {
     background: rgba(255, 255, 255, 0.95);
@@ -347,9 +235,7 @@ tr.selected-row #view-btn {
     padding: 4px 8px;
     font-size: 0.85rem;
     cursor: pointer;
-    transition: all 0.2s ease;
     color: #000;
-    font-weight: normal;
 }
 
 .edit-dropdown:hover,
@@ -358,32 +244,25 @@ tr.selected-row #view-btn {
     box-shadow: 0 0 5px rgba(0, 255, 255, 0.3);
 }
 
-.edit-dropdown:focus,
-.add-dropdown:focus {
-    outline: none;
-    border-color: #00ffaa;
-    box-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
-}
-
-/* Status and assessor cell text styling */
+/* Status and assessor cell text */
 .status-cell,
 .assessor-cell {
     color: #e0f0ff;
     font-weight: bold;
 }
 
-/* Status cell special styling based on status */
-.status-cell:contains("Evaluated") {
-    color: #4caf50;
+/* Score colors */
+.score-high {
+    color: var(--success);
     font-weight: bold;
 }
 
-.status-cell:contains("Ongoing") {
-    color: #ff9800;
+.score-medium {
+    color: var(--warning);
     font-weight: bold;
 }
 
-.status-cell:contains("Pending") {
-    color: #f44336;
+.score-low {
+    color: var(--error);
     font-weight: bold;
 }

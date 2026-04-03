@@ -40,9 +40,6 @@ const DOM = {
     editBtn: document.getElementById('editEvaluationBtn')
 };
 
-// ------------------------------
-// 2. Application State
-// ------------------------------
 const State = {
     studentList: [],
     assessorList: [],
@@ -55,9 +52,6 @@ const State = {
     assessorEvaluations: {}
 };
 
-// ------------------------------
-// 3. Evaluation Criteria (Immutable)
-// ------------------------------
 const EVALUATION_CRITERIA = [
     { name: "Undertaking Tasks/Projects", weight: 10, key: "undertaking" },
     { name: "Health and Safety Requirements at the Workplace", weight: 10, key: "health_safety" },
@@ -69,17 +63,14 @@ const EVALUATION_CRITERIA = [
     { name: "Time Management", weight: 15, key: "time" }
 ];
 
-// ------------------------------
-// 4. Storage Keys
-// ------------------------------
 const STORAGE_KEYS = {
     EVAL_DATA: 'internshipEvalData',
     EVALUATIONS: 'assessorEvaluations'
 };
 
-// ------------------------------
-// 5. Utility Functions
-// ------------------------------
+// ==============================
+// Utility Functions
+// ==============================
 function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/[&<>]/g, (m) => {
@@ -98,9 +89,9 @@ function generateEvaluationKey(assessorId, studentId) {
     return `${assessorId}_${studentId}`;
 }
 
-// ------------------------------
-// 6. Data Management
-// ------------------------------
+// ==============================
+// Data Management
+//==============================
 function loadDataFromLocalStorage() {
     const savedData = localStorage.getItem(STORAGE_KEYS.EVAL_DATA);
     if (savedData) {
@@ -165,9 +156,9 @@ function saveStudentEvaluation(studentId, assessorId, evaluationData) {
     }
 }
 
-// ------------------------------
-// 7. Score Calculation
-// ------------------------------
+// ==============================
+// Score Calculation
+// ==============================
 function calculateWeightedTotal() {
     let total = 0;
     for (const criterion of EVALUATION_CRITERIA) {
@@ -192,23 +183,15 @@ function collectEvaluationData() {
 
     // Auto-generate remarks if empty
     if (!remarks) {
-        if (weightedTotal >= 85) {
-            remarks = "🏆 Outstanding performance throughout the internship. Excellent work!";
-        } else if (weightedTotal >= 70) {
-            remarks = "👍 Good performance. Meets expectations with consistent effort. Shows potential for growth.";
-        } else if (weightedTotal >= 60) {
-            remarks = "📌 Satisfactory performance. Room for improvement in certain areas.";
-        } else {
-            remarks = "⚠️ Needs improvement. Please focus on the areas highlighted above.";
-        }
+        remarks = "No remarks given";
     }
 
     return { scores, weightedTotal, remarks, criteria: EVALUATION_CRITERIA };
 }
 
-// ------------------------------
-// 8. Render Functions - Admin View
-// ------------------------------
+// ==============================
+// Render Functions - Admin View
+// ==============================
 function renderAssessorDropdown() {
     if (!DOM.assessorDropdown) return;
 
@@ -385,9 +368,9 @@ function displayStudentMarks(studentId, studentName, assessorId = null) {
     DOM.marksPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ------------------------------
-// 9. Render Functions - Assessor View
-// ------------------------------
+// ==================================
+// Render Functions - Assessor View
+// ==================================
 function renderStudentDropdown() {
     if (!DOM.studentDropdown || !State.currentAssessor) return;
 
@@ -556,9 +539,9 @@ function editEvaluation() {
     }
 }
 
-// ------------------------------
-// 10. UI Setup by Role
-// ------------------------------
+// ==============================
+// UI Setup by Role
+// ==============================
 function setupUIForRole() {
     const isAdmin = State.userRole === 'administrator';
     const isAssessor = State.userRole === 'assessor';
@@ -693,7 +676,7 @@ function handlePendingEvaluationRedirect(assessor) {
     }
 }
 
-function handleViewModeRedirect(assessor) {
+function handleViewModeRedirect() {
     const viewMode = sessionStorage.getItem('viewMode');
     const viewStudentId = sessionStorage.getItem('viewStudentId');
     const viewAssessorId = sessionStorage.getItem('viewAssessorId');
@@ -723,9 +706,9 @@ function handleViewModeRedirect(assessor) {
     return false;
 }
 
-// ------------------------------
-// 12. Login Form Handler
-// ------------------------------
+// ==============================
+// Login Form Handler
+// ==============================
 function setupLoginForm() {
     if (!DOM.loginForm) return;
 
@@ -791,9 +774,9 @@ function setupClosePopup() {
     }
 }
 
-// ------------------------------
-// 13. Storage Event Listener
-// ------------------------------
+// ==============================
+// Storage Event Listener
+// ==============================
 function setupStorageListener() {
     window.addEventListener('storage', (e) => {
         if (e.key === STORAGE_KEYS.EVAL_DATA) {
@@ -817,9 +800,9 @@ function setupStorageListener() {
     });
 }
 
-// ------------------------------
-// 14. Initialization
-// ------------------------------
+// ==============================
+// Initialization
+// ==============================
 function init() {
     loadDataFromLocalStorage();
     loadEvaluationsFromStorage();
@@ -830,5 +813,4 @@ function init() {
     checkExistingLogin();
 }
 
-// Start the application
 init();

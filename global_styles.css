@@ -1,6 +1,7 @@
 * {
     margin: 0;
-    padding: 0
+    padding: 0;
+    box-sizing: border-box;
 }
 
 :root {
@@ -13,6 +14,7 @@
     --success: #4caf50;
     --warning: #ff9800;
     --error: #f44336;
+    --info: #2196f3;
     --border-radius: 12px;
     --transition: 0.3s ease;
 }
@@ -21,29 +23,39 @@ body {
     font-family: Arial, sans-serif;
 }
 
+/* Page Wrappers */
 .main,
 .evaluation-page-wrapper,
-.contact-page-wrapper {
+.contact-page-wrapper,
+.list-page-wrapper {
     width: 100%;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.5)50%, rgba(0, 0, 0, 0.5)50%), url(website_background.jpeg);
+    min-height: 100vh;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.5)50%, rgba(0, 0, 0, 0.5)50%), url('website_background.jpeg');
     background-position: center;
     background-size: cover;
-    height: 150vh;
     position: relative;
     overflow-x: auto;
 }
 
+/* Content Containers */
+.content,
+.evaluation-content,
+.contact-content,
+.list-content {
+    width: 1200px;
+    max-width: 95%;
+    margin: 0 auto;
+    padding: 30px 0 50px;
+}
 
-/*=======================================
-  NAVIGATION BAR
-=========================================*/
-
+/* ============================================
+   NAVIGATION BAR
+   ============================================ */
 .navbar {
     width: 93%;
     height: 85px;
     margin: auto;
 }
-
 
 .icon {
     width: 200px;
@@ -68,6 +80,7 @@ body {
     width: 400px;
     float: left;
     height: 70px;
+    color: var(--primary-cyan);
 }
 
 ul {
@@ -147,7 +160,6 @@ ul li a:hover::after {
     font-weight: bold;
     max-width: 200px;
     text-align: center;
-    align-items: center;
     overflow: hidden;
     text-overflow: ellipsis;
 }
@@ -185,7 +197,6 @@ ul li a:hover::after {
         display: none;
     }
 }
-
 
 /* ============================================
    LOGIN POPUP
@@ -311,7 +322,6 @@ ul li a:hover::after {
 }
 
 .btn {
-    position: relative;
     width: 100%;
     height: 45px;
     background: transparent;
@@ -329,9 +339,8 @@ ul li a:hover::after {
 }
 
 /* ============================================
-    ACCESS DENIED POPUP
-    ============================================ */
-
+   ACCESS DENIED
+   ============================================ */
 .access-denied {
     display: flex;
     flex-direction: column;
@@ -339,6 +348,8 @@ ul li a:hover::after {
     align-items: center;
     text-align: center;
     padding: 40px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 40px;
 }
 
 .access-denied .denied-icon {
@@ -358,23 +369,9 @@ ul li a:hover::after {
     margin-bottom: 30px;
 }
 
-/*============================================
-    UNIVERSAL TABLE STYLES & CONTENT BOX
-    ============================================*/
-
-.content,
-.evaluation-content,
-.contact-content {
-    width: 1200px;
-    margin: 0 auto;
-    padding: 40px 0;
-    color: cyan;
-}
-
-.scrollable-table thead {
-    z-index: 20;
-}
-
+/* ============================================
+   UNIVERSAL TABLE STYLES
+   ============================================ */
 .scrollable-table {
     margin-top: 15px;
     max-width: 1600px;
@@ -385,6 +382,7 @@ ul li a:hover::after {
     text-align: center;
     font-weight: bold;
     white-space: nowrap;
+    border-radius: 16px;
 }
 
 .scrollable-table table {
@@ -397,7 +395,7 @@ ul li a:hover::after {
     top: 0;
     background: rgba(0, 0, 255, 0.5);
     color: aquamarine;
-    padding: 6px;
+    padding: 12px 8px;
     border: 2px solid black;
     backdrop-filter: blur(2px);
 }
@@ -405,11 +403,10 @@ ul li a:hover::after {
 .scrollable-table td {
     color: mediumblue;
     background-color: rgba(255, 228, 196, 0.65);
-    padding: 6px;
+    padding: 10px 8px;
     border: 2px solid black;
     word-break: break-word;
 }
-
 
 .scrollable-table thead tr {
     position: relative;
@@ -418,4 +415,173 @@ ul li a:hover::after {
 
 .scrollable-table tbody tr {
     transition: background-color 0.2s ease;
+}
+
+/* Selected Row */
+.scrollable-table tbody tr.selected-row td {
+    background: rgba(0, 255, 255, 0.6);
+    box-shadow: inset 0 0 0 2px cyan;
+    color: #003366;
+    font-weight: bold;
+}
+
+/* Table Buttons (hidden until row selected) */
+.scrollable-table td.action-cell {
+    text-align: center;
+    background: none;
+    border: none;
+    box-shadow: none;
+    padding: 0px;
+}
+
+.edit-row-btn,
+.delete-row-btn {
+    background: transparent;
+    border: 1.5px solid white;
+    color: white;
+    font-weight: bold;
+    border-radius: 20px;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: 0.2s;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.edit-row-btn:hover {
+    background: darkblue;
+}
+
+.delete-row-btn:hover {
+    background: red;
+}
+
+.delete-row-btn {
+    margin-left: 5px;
+}
+
+.scrollable-table tbody tr.selected-row .edit-row-btn,
+.scrollable-table tbody tr.selected-row .delete-row-btn {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* Edit Modal */
+.edit-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.edit-modal-content {
+    background: linear-gradient(135deg, #0a1e2d, #06121c);
+    border-radius: 28px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 85vh;
+    overflow-y: auto;
+    border: 2px solid cyan;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+.edit-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-bottom: 1px solid cyan;
+}
+
+.edit-modal-header h3 {
+    color: cyan;
+    font-size: 24px;
+}
+
+.close-modal-btn {
+    background: none;
+    border: none;
+    color: #ff8888;
+    font-size: 32px;
+    cursor: pointer;
+}
+
+#editModalBody {
+    padding: 25px;
+}
+
+.edit-field {
+    margin-bottom: 20px;
+}
+
+.edit-field label {
+    display: block;
+    color: cyan;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.edit-field input,
+.edit-field select,
+.edit-field textarea {
+    width: 100%;
+    padding: 10px 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid cyan;
+    border-radius: 12px;
+    color: white;
+    font-size: 14px;
+}
+
+.edit-field option {
+    background: #0a1e2d;
+}
+
+.edit-modal-footer {
+    display: flex;
+    gap: 15px;
+    padding: 20px 25px;
+    border-top: 1px solid rgba(0, 255, 255, 0.3);
+    justify-content: center;
+}
+
+.save-edit-btn {
+    background: linear-gradient(135deg, var(--success), #2e7d32);
+    border: none;
+    padding: 10px 25px;
+    border-radius: 30px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.cancel-edit-btn {
+    background: linear-gradient(135deg, var(--error), #c62828);
+    border: none;
+    padding: 10px 25px;
+    border-radius: 30px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+
+    .content,
+    .evaluation-content,
+    .contact-content,
+    .list-content {
+        width: 98%;
+    }
 }
