@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Internship Evaluation | List View</title>
+    <link rel="stylesheet" href="global_styles.css">
+    <link rel="stylesheet" href="list_style.css">
+</head>
+
+<body>
+    <div class="list-page-wrapper">
+        <!-- Navigation Bar -->
+        <div class="navbar">
+            <div class="icon">
+                <h2 class="logo">University of Nottingham</h2>
+            </div>
+            <div class="menu">
+                <ul>
+                    <li><a href="Internship_Website.html">DASHBOARD</a></li>
+                    <li><a href="list.html" style="color: cyan;">LIST</a></li>
+                    <li><a href="evaluation.html">EVALUATION</a></li>
+                    <li><a href="contact.html">CONTACT</a></li>
+                </ul>
+            </div>
+            <div class="login">
+                <button class="login_btn" id="loginBtn">LOGIN</button>
+                <div class="user-info" id="userInfo" style="display: none;">
+                    <span class="username" id="usernameDisplay"></span>
+                    <span class="user-role" id="userRoleDisplay"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Login Popup -->
+        <div class="wrapper" id="loginPopup">
+            <span class="icon-close" id="closePopup">
+                <ion-icon name="close-outline"></ion-icon>
+            </span>
+            <div class="form-box-login">
+                <h2>Login</h2>
+                <form id="listLoginForm">
+                    <div class="input-box">
+                        <span class="icon"><ion-icon name="mail"></ion-icon></span>
+                        <input type="email" id="loginEmail" required>
+                        <label>Email</label>
+                    </div>
+                    <div class="input-box">
+                        <span class="icon"><ion-icon name="lock-closed"></ion-icon></span>
+                        <input type="password" id="loginPassword" required>
+                        <label>Password</label>
+                    </div>
+                    <div class="remember-forgot">
+                        <label><input type="checkbox">Remember me</label>
+                        <a href="#">Forgot Password</a>
+                    </div>
+                    <button type="submit" class="btn">Login</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="list-content">
+            <div id="accessDenied" class="access-denied" style="display: none;">
+                <div class="denied-icon">🔒</div>
+                <h2>Access Restricted</h2>
+                <p>Please log in with an administrator or assessor account to view the list page.</p>
+            </div>
+
+            <!-- Admin View: Multiple Tables -->
+            <div id="adminView" style="display: none;">
+                <!-- Accounts Table -->
+                <div class="table-card">
+                    <div class="table-header-bar">
+                        <h2>📋 Registered Accounts</h2>
+                        <div class="filter-group">
+                            <input type="text" id="searchAccounts" placeholder="🔍 Search by name or email..."
+                                class="search-input">
+                        </div>
+                    </div>
+                    <div class="scrollable-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Contact</th>
+                                    <th>Created</th>
+                                </tr>
+                            </thead>
+                            <tbody id="accountsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Students Table -->
+                <div class="table-card">
+                    <div class="table-header-bar">
+                        <h2>🧑‍🎓 Students</h2>
+                        <div class="filter-group">
+                            <input type="text" id="searchStudents" placeholder="🔍 Search by name or ID..."
+                                class="search-input">
+                            <select id="filterStudentStatus" class="filter-select">
+                                <option value="">All Status</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Ongoing">Ongoing</option>
+                                <option value="Evaluated">Evaluated</option>
+                            </select>
+                            <select id="filterStudentAssessor" class="filter-select">
+                                <option value="">All Assessors</option>
+                            </select>
+                            <select id="filterStudentProgramme" class="filter-select">
+                                <option value="">All Programmes</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="scrollable-table" id="studentsScrollableTable">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Programme</th>
+                                    <th>Company</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Assessors Table -->
+                <div class="table-card">
+                    <div class="table-header-bar">
+                        <h2>👥 Assessors</h2>
+                        <div class="filter-group">
+                            <input type="text" id="searchAssessors" placeholder="🔍 Search by name or ID..."
+                                class="search-input">
+                        </div>
+                    </div>
+                    <div class="scrollable-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Department</th>
+                                    <th>Email</th>
+                                    <th>Students</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assessorsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assessor View: Assigned Students Only -->
+            <div id="assessorView" style="display: none;">
+                <div class="assessor-welcome-card">
+                    <h2>👋 Welcome, <span id="assessorNameDisplay"></span></h2>
+                    <p>Your assigned students for evaluation and progress tracking</p>
+                </div>
+
+                <div class="table-card">
+                    <div class="table-header-bar">
+                        <h2>🎓 My Assigned Students</h2>
+                        <div class="filter-group">
+                            <input type="text" id="searchAssignedStudents" placeholder="🔍 Search by name or ID..."
+                                class="search-input">
+                            <select id="filterAssignedStatus" class="filter-select">
+                                <option value="">All Status</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Ongoing">Ongoing</option>
+                                <option value="Evaluated">Evaluated</option>
+                            </select>
+                            <select id="filterAssignedProgramme" class="filter-select">
+                                <option value="">All Programmes</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="scrollable-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Programme</th>
+                                    <th>Company</th>
+                                    <th>Internship Period</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assignedStudentsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Details Panel (shows when a row is clicked) -->
+            <div id="detailsPanel" class="details-panel" style="display: none;">
+                <div class="details-header">
+                    <ion-icon name="person-circle-outline" style="font-size: 28px;"></ion-icon>
+                    <h3 id="detailsTitle">Student Details</h3>
+                    <button id="closeDetailsBtn" class="close-details-btn">✕</button>
+                </div>
+                <div id="detailsContent" class="details-content"></div>
+                <!-- Progress Notes (only for assessor view on their assigned students) -->
+                <div id="progressNotesSection" class="progress-notes-section" style="display: none;">
+                    <label for="studentProgressNote">📝 Internship Progress Notes:</label>
+                    <textarea id="studentProgressNote" rows="4"
+                        placeholder="Add notes about student's progress, achievements, areas for improvement..."></textarea>
+                    <button id="saveNoteBtn" class="save-note-btn">💾 Save Notes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="editModal" class="edit-modal" style="display: none;">
+        <div class="edit-modal-content">
+            <div class="edit-modal-header">
+                <h3 id="editModalTitle">Edit Item</h3>
+                <button class="close-modal-btn">&times;</button>
+            </div>
+            <div id="editModalBody"></div>
+            <div class="edit-modal-footer">
+                <button id="saveEditBtn" class="save-edit-btn">💾 Save Changes</button>
+                <button id="cancelEditBtn" class="cancel-edit-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    <script src="list_script.js"></script>
+</body>
+
+</html>

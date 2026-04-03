@@ -1,162 +1,6 @@
-* {
-    margin: 0;
-    padding: 0
-}
-
-.main {
-    width: 100%;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.5)50%, rgba(0, 0, 0, 0.5)50%), url(website_background.jpeg);
-    background-position: center;
-    background-size: cover;
-    height: 150vh;
-    position: relative;
-    overflow-x: hidden;
-}
-
-/*-----------------------------------------------------------------------------------------*/
-/* NAVIGATION BAR */
-/*-----------------------------------------------------------------------------------------*/
-.navbar {
-    width: 93%;
-    height: 85px;
-    margin: auto;
-}
-
-.icon {
-    width: 200px;
-    float: left;
-    height: 70px;
-}
-
-.logo {
-    font-size: 25px;
-    font-family: Arial;
-    float: left;
-    padding-top: 10px;
-    padding-left: 40px;
-    background-image: url('Nottingham.png');
-    background-size: cover;
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
-}
-
-.menu {
-    width: 400px;
-    float: left;
-    height: 70px;
-}
-
-ul {
-    float: left;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-ul li {
-    list-style: none;
-    margin-left: 62px;
-    margin-top: 24px;
-    font-size: 17px;
-}
-
-ul li a {
-    text-decoration: none;
-    color: aliceblue;
-    font-family: Arial;
-    font-weight: bold;
-    position: relative;
-    padding-bottom: 5px;
-    transition: 0.4s ease-in-out;
-}
-
-ul li a::after {
-    content: '';
-    position: absolute;
-    width: 0;
-    height: 2px;
-    bottom: 0;
-    left: 0;
-    background-color: aqua;
-    border-radius: 3px;
-    transition: width 0.4s ease-in-out;
-}
-
-ul li a:hover {
-    color: aqua;
-}
-
-ul li a:hover::after {
-    width: 100%;
-}
-
-/*-----------------------------------------------------------------------------------------*/
-/* LOGIN BUTTON AND INFO */
-/*-----------------------------------------------------------------------------------------*/
-
-.login_btn {
-    position: absolute;
-    right: 10%;
-    width: 100px;
-    height: 30px;
-    background: transparent;
-    border: 2px solid cyan;
-    border-radius: 6px;
-    margin-top: 18px;
-    color: aliceblue;
-    padding-top: 3px;
-    font-size: 17px;
-    font-family: Arial;
-    font-weight: bold;
-    cursor: pointer;
-    transition: 0.5s;
-}
-
-.login_btn:hover {
-    background: mediumblue;
-}
-
-.login_btn.logout-state:hover {
-    background: darkred;
-}
-
-.user-info {
-    position: absolute;
-    top: 1.5%;
-    right: 1.5%;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    background: none;
-    padding: 5px 15px;
-    border-radius: 8px;
-    border-right: 3px solid cyan;
-    border-left: 3px solid cyan;
-    color: rgba(0, 255, 255, 0.8);
-    font-family: Arial;
-    display: none;
-}
-
-.username {
-    font-size: 14px;
-    font-weight: bold;
-}
-
-.user-role {
-    font-size: 11px;
-}
-
 /*-----------------------------------------------------------------------------------------*/
 /* CONTENT AREA */
 /*-----------------------------------------------------------------------------------------*/
-
-.content {
-    width: 1200px;
-    height: auto;
-    margin: auto;
-    color: cyan;
-}
 
 .content h1 {
     font-size: 50px;
@@ -167,9 +11,9 @@ ul li a:hover::after {
 
 }
 
-/*-----------------------------------------------------------------------------------------*/
+/*====================================================*/
 /* DASHBOARD TABLE */
-/*-----------------------------------------------------------------------------------------*/
+/*====================================================*/
 
 .table-wrapper {
     margin-bottom: 10px;
@@ -178,57 +22,6 @@ ul li a:hover::after {
 .table-header h2 {
     font-size: 46px;
     margin-bottom: 10px;
-}
-
-.scrollable-table thead {
-    z-index: 20;
-}
-
-.scrollable-table {
-    margin-top: 15px;
-    max-width: 1600px;
-    overflow-y: auto;
-    overflow-x: auto;
-    border-radius: 12px;
-    scrollbar-color: cyan #002244;
-    scrollbar-width: thin;
-    table-layout: auto;
-    text-align: center;
-    font-weight: bold;
-    white-space: nowrap;
-}
-
-.scrollable-table table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.scrollable-table th {
-    position: sticky;
-    top: 0;
-    background: rgba(0, 0, 255, 0.5);
-    color: aquamarine;
-    padding: 6px;
-    border: 2px solid black;
-    backdrop-filter: blur(2px);
-}
-
-.scrollable-table td {
-    color: mediumblue;
-    background-color: rgba(255, 228, 196, 0.65);
-    padding: 6px;
-    border: 2px solid black;
-    word-break: break-word;
-}
-
-
-.scrollable-table thead tr {
-    position: relative;
-    z-index: 15;
-}
-
-.scrollable-table tbody tr {
-    transition: background-color 0.2s ease;
 }
 
 .assigned-list {
@@ -278,7 +71,9 @@ tr.selected-row #delete-account-btn,
 tr.selected-row #edit-student-btn,
 tr.selected-row #delete-student-btn,
 tr.selected-row #edit-assessor-btn,
-tr.selected-row #delete-assessor-btn {
+tr.selected-row #delete-assessor-btn,
+tr.selected-row #evaluate-btn,
+tr.selected-row #view-btn {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
@@ -416,143 +211,179 @@ tr.selected-row #delete-assessor-btn {
     border-color: white;
 }
 
-/*-----------------------------------------------------------------------------------------*/
-/* LOGIN WRAPPER BOX */
-/*-----------------------------------------------------------------------------------------*/
-
-.wrapper {
-    position: fixed;
-    top: 25%;
-    left: 35%;
-    width: 400px;
-    background: transparent;
-    border: 2px solid rgba(255, 255, 255, 0.5);
-    border-radius: 20px;
-    backdrop-filter: blur(20px);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-    transform: scale(0);
-    transition: transform .5s ease;
-    z-index: 100;
-}
-
-.wrapper.active-popup {
-    transform: scale(1);
-}
-
-.wrapper .form-box-login {
-    width: 100%;
-    padding: 40px;
-}
-
-.wrapper .icon-close {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 45px;
-    height: 45px;
-    background: black;
-    font-size: 2em;
+#evaluate-btn {
     color: white;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-bottom-left-radius: 20px;
-    cursor: pointer;
-    z-index: 1;
+    border-color: white;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
 }
 
-.wrapper .form-box-login h2 {
-    text-align: center;
-    font-size: 30px;
+#evaluate-btn:hover {
+    background: #073f20;
+    color: white;
+    border-color: white;
+}
+
+#view-btn {
+    color: white;
+    border-color: white;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+#view-btn:hover {
+    background: #a5aa17;
+    color: white;
+    border-color: white;
+}
+
+
+/*==========================================*/
+/*==========================================*/
+
+.assessor-welcome {
+    background: rgba(0, 255, 255, 0.15);
+    border-radius: 20px;
+    padding: 25px;
+    margin-bottom: 30px;
+    border-left: 5px solid cyan;
+}
+
+.assessor-welcome h2 {
+    color: #f9e16b;
+    font-size: 32px;
+    margin-bottom: 10px;
+}
+
+.assessor-welcome p {
+    color: #e0f0ff;
+    font-size: 20px;
+    margin-left: 55px;
+}
+
+.assessor-table-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    width: 350px;
+}
+
+.badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 14px;
     font-weight: bold;
 }
 
-.input-box {
-    position: relative;
-    width: 100%;
-    height: 50px;
-    border-bottom: 2px solid black;
-    margin: 20px 0;
+.pending-count {
+    background: #ff9800;
+    color: #fff;
 }
 
-.input-box label {
-    position: absolute;
-    top: 0%;
-    left: 5%;
-    font-size: 1em;
-    font-weight: 550;
-    font-family: Arial;
-    color: aliceblue;
+.completed-count {
+    background: #4caf50;
+    color: #fff;
 }
 
-.input-box .icon {
-    position: relative;
-    right: 3px;
-    color: aliceblue;
-}
-
-.input-box input {
-    position: absolute;
-    top: 20%;
-    left: 0%;
-    width: 100%;
-    height: 100%;
-    background: transparent;
-    border: none;
-    outline: none;
-    font-family: Arial;
-    font-size: 1em;
+.evaluate-btn,
+.view-btn {
+    background: none;
+    border: #fff solid 1px;
+    border-radius: 20px;
+    padding: 6px 16px;
     color: white;
-    font-weight: 500;
-    padding: 0 35px 0 5px;
-}
-
-.remember-forgot {
-    position: relative;
-    font-size: 0.9em;
-    font-weight: 500;
-    margin: 0 0 30px;
-    display: flex;
-    justify-content: space-between;
-    font-family: Arial;
-}
-
-.remember-forgot label {
-    margin-right: 10px;
-    font-weight: 500;
-    color: aliceblue;
-}
-
-.remember-forgot label input {
-    margin-right: 3px;
-}
-
-.remember-forgot a {
-    color: darkred;
-    text-decoration: none;
-}
-
-.remember-forgot a:hover {
-    text-decoration: underline;
-}
-
-.btn {
-    position: relative;
-    width: 100%;
-    height: 45px;
-    background: transparent;
-    border: 2px solid cyan;
-    border-radius: 6px;
+    font-weight: bold;
     cursor: pointer;
-    font-size: 1em;
-    color: aliceblue;
-    font-weight: 600;
-    transition: 0.5s;
+    transition: 0.3s;
 }
 
-.btn:hover {
-    background: mediumblue;
+.evaluate-btn:hover,
+.view-btn:hover {
+    transform: translateY(-2px);
+    background-color: #4caf50;
+}
+
+.status-pending {
+    color: #ff9800;
+    font-weight: bold;
+}
+
+.status-completed {
+    color: #4caf50;
+    font-weight: bold;
+}
+
+.score-high {
+    color: #4caf50;
+    font-weight: bold;
+}
+
+.score-medium {
+    color: #ff9800;
+    font-weight: bold;
+}
+
+.score-low {
+    color: #f44336;
+    font-weight: bold;
+}
+
+#assessorDashboard {
+    display: none;
+}
+
+/*=============================*/
+/*=============================*/
+
+/* Dropdown styles for student table */
+.edit-dropdown,
+.add-dropdown {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid cyan;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #000;
+    font-weight: normal;
+}
+
+.edit-dropdown:hover,
+.add-dropdown:hover {
+    border-color: #00ffaa;
+    box-shadow: 0 0 5px rgba(0, 255, 255, 0.3);
+}
+
+.edit-dropdown:focus,
+.add-dropdown:focus {
+    outline: none;
+    border-color: #00ffaa;
+    box-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+}
+
+/* Status and assessor cell text styling */
+.status-cell,
+.assessor-cell {
+    color: #e0f0ff;
+    font-weight: bold;
+}
+
+/* Status cell special styling based on status */
+.status-cell:contains("Evaluated") {
+    color: #4caf50;
+    font-weight: bold;
+}
+
+.status-cell:contains("Ongoing") {
+    color: #ff9800;
+    font-weight: bold;
+}
+
+.status-cell:contains("Pending") {
+    color: #f44336;
+    font-weight: bold;
 }

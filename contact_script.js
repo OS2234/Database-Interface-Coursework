@@ -1,200 +1,21 @@
-const wrapper = document.querySelector('.contact-page-wrapper .wrapper');
-const btnPopup = document.getElementById('loginBtn');
-const iconClose = document.querySelector('.contact-page-wrapper .icon-close');
-const loginForm = document.getElementById('contactLoginForm');
-const userInfo = document.getElementById('userInfo');
-const usernameDisplay = document.getElementById('usernameDisplay');
-const userRoleDisplay = document.getElementById('userRoleDisplay');
+const DOM = {
+    wrapper: null,
+    btnPopup: null,
+    iconClose: null,
+    loginForm: null,
+    userInfo: null,
+    usernameDisplay: null,
+    userRoleDisplay: null,
+    tableBody: null,
+    loginBtn: null
+};
 
-
-let accountListForLogin = [];
-
-function loadAccountsForLogin() {
-    const savedData = localStorage.getItem('internshipEvalData');
-    if (savedData) {
-        try {
-            const parsedData = JSON.parse(savedData);
-            if (parsedData.accountList && Array.isArray(parsedData.accountList)) {
-                accountListForLogin = parsedData.accountList;
-                console.log('Accounts loaded for login:', accountListForLogin.length);
-                return true;
-            }
-        } catch (error) {
-            console.error('Error loading accounts for login:', error);
-        }
-    }
-    return false;
-}
-
-function checkExistingLogin() {
-    const loggedInUser = sessionStorage.getItem('loggedInUser');
-    if (loggedInUser) {
-        try {
-            const user = JSON.parse(loggedInUser);
-            if (userInfo && usernameDisplay && userRoleDisplay) {
-                usernameDisplay.textContent = user.username;
-                userRoleDisplay.textContent = user.userRole;
-                userInfo.style.display = 'flex';
-                const loginBtn = document.getElementById('loginBtn');
-                if (loginBtn) {
-                    loginBtn.textContent = 'LOGOUT';
-                    loginBtn.classList.add('logout-state');
-                }
-            }
-        } catch (e) {
-            console.error('Error parsing logged in user:', e);
-        }
-    }
-}
-
-function saveLoginState(user) {
-    sessionStorage.setItem('loggedInUser', JSON.stringify(user));
-}
-
-function clearLoginState() {
-    sessionStorage.removeItem('loggedInUser');
-}
-
-if (loginForm) {
-    loginForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-
-        const emailInput = document.getElementById('contactLoginEmail');
-        const passwordInput = document.getElementById('contactLoginPassword');
-        const enteredEmail = emailInput.value.trim();
-        const enteredPassword = passwordInput.value.trim();
-
-        loadAccountsForLogin();
-
-        const matchedAccount = accountListForLogin.find(account =>
-            account.email === enteredEmail &&
-            account.password === enteredPassword
-        );
-
-        if (matchedAccount) {
-            if (wrapper) {
-                wrapper.classList.remove('active-popup');
-            }
-
-            if (userInfo && usernameDisplay && userRoleDisplay) {
-                usernameDisplay.textContent = matchedAccount.username;
-                userRoleDisplay.textContent = matchedAccount.userRole;
-                userInfo.style.display = 'flex';
-                const loginBtn = document.getElementById('loginBtn');
-                if (loginBtn) {
-                    loginBtn.textContent = 'LOGOUT';
-                    loginBtn.classList.add('logout-state');
-                }
-            }
-
-            saveLoginState({
-                username: matchedAccount.username,
-                email: matchedAccount.email,
-                userRole: matchedAccount.userRole
-            });
-
-            alert(`Logged in successfully as ${matchedAccount.username} (${matchedAccount.userRole})`);
-
-            emailInput.value = '';
-            passwordInput.value = '';
-        } else {
-            alert('Invalid email or password. Please try again.');
-        }
-    });
-}
-
-if (btnPopup) {
-    btnPopup.addEventListener('click', function () {
-
-        if (this.textContent === 'LOGOUT') {
-            // Logout action
-            if (userInfo) {
-                userInfo.style.display = 'none';
-            }
-            this.textContent = 'LOGIN';
-            this.classList.remove('logout-state');
-            if (wrapper) {
-                wrapper.classList.remove('active-popup');
-            }
-            clearLoginState();
-            alert('Logged out successfully');
-        } else {
-
-            if (wrapper) {
-                wrapper.classList.add('active-popup');
-            }
-
-            const emailInput = document.getElementById('contactLoginEmail');
-            const passwordInput = document.getElementById('contactLoginPassword');
-            if (emailInput) emailInput.value = '';
-            if (passwordInput) passwordInput.value = '';
-        }
-    });
-}
-
-if (iconClose) {
-    iconClose.addEventListener('click', () => {
-        if (wrapper) {
-            wrapper.classList.remove('active-popup');
-        }
-    });
-}
+let accountList = [];
+let loggedInUser = null;
 
 // ============================================
-// ADMIN CONTACT TABLE LOADING
+// Utility Functions
 // ============================================
-function loadAdminContactsTable() {
-    const tableBody = document.getElementById('adminContactTableBody');
-    if (!tableBody) return;
-
-    let adminAccounts = [];
-
-    const savedData = localStorage.getItem('internshipEvalData');
-    if (savedData) {
-        try {
-            const parsedData = JSON.parse(savedData);
-            if (parsedData.accountList && Array.isArray(parsedData.accountList)) {
-                adminAccounts = parsedData.accountList.filter(acc =>
-                    acc.userRole && (acc.userRole.toLowerCase().includes('it') ||
-                        acc.userRole.toLowerCase() === 'administrator')
-                );
-            }
-        } catch (error) {
-            console.error('Error loading from localStorage:', error);
-        }
-    }
-
-    if (adminAccounts.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="3" style="color:darkblue; background:lightcyan; text-align:center; padding:5px;">No admin accounts available, Try contacting the IT service desk.</td></tr>`;
-        return;
-    }
-
-    let html = '';
-    adminAccounts.forEach(admin => {
-        const adminName = admin.username || 'Administrator';
-        const adminEmail = admin.email || `${adminName.toLowerCase().replace(/\s/g, '.')}@nottingham.edu`;
-        const adminPhone = admin.contact || (admin.userRole?.includes('IT') ? '+44 115 951 6677' : '+44 115 951 5000');
-
-        html += `
-                    <tr>
-                        <td>${escapeHtml(adminName)}</td>
-                        <td>
-                            <a href="mailto:${escapeHtml(adminEmail)}" class="email-link">
-                                <ion-icon name="mail-outline"></ion-icon> ${escapeHtml(adminEmail)}
-                            </a>
-                        </td>
-                        <td>
-                            <a href="tel:${escapeHtml(adminPhone.replace(/\s/g, ''))}" class="phone-link">
-                                <ion-icon name="call-outline"></ion-icon> ${escapeHtml(adminPhone)}
-                            </a>
-                        </td>
-                    </tr>
-                `;
-    });
-
-    tableBody.innerHTML = html;
-}
-
 function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/[&<>]/g, function (m) {
@@ -205,17 +26,214 @@ function escapeHtml(str) {
     });
 }
 
-document.getElementById('listLink')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    alert('📋 Please return to Dashboard to manage student lists.');
-});
-
-loadAdminContactsTable();
-
-checkExistingLogin();
-
-window.addEventListener('storage', function (e) {
-    if (e.key === 'internshipEvalData') {
-        loadAdminContactsTable();
+function getSavedData() {
+    const saved = localStorage.getItem('internshipEvalData');
+    if (saved) {
+        try {
+            return JSON.parse(saved);
+        } catch (e) {
+            console.error('Error loading data:', e);
+        }
     }
-});
+    return null;
+}
+
+// ============================================
+// Account Loading
+// ============================================
+function loadAccountsForLogin() {
+    const data = getSavedData();
+    if (data?.accountList?.length) {
+        accountList = data.accountList;
+        return true;
+    }
+    accountList = [];
+    return false;
+}
+
+// ============================================
+// Login State Management
+// ============================================
+
+function checkLogin() {
+    const loggedIn = sessionStorage.getItem('loggedInUser');
+
+    const user = JSON.parse(loggedIn);
+    if (!user) return;
+
+    if (DOM.usernameDisplay && DOM.userRoleDisplay) {
+        DOM.usernameDisplay.textContent = user.username;
+        DOM.userRoleDisplay.textContent = user.userRole;
+        DOM.userInfo.style.display = 'flex';
+        if (DOM.loginBtn) {
+            DOM.loginBtn.textContent = 'LOGOUT';
+            DOM.loginBtn.classList.add('logout-state');
+        }
+    }
+}
+
+// ============================================
+// Login Handler
+// ============================================
+
+function logout() {
+    sessionStorage.removeItem('loggedInUser');
+    if (DOM.userInfo) DOM.userInfo.style.display = 'none';
+    if (DOM.loginBtn) {
+        DOM.loginBtn.textContent = 'LOGIN';
+        DOM.loginBtn.classList.remove('logout-state');
+    }
+    if (DOM.wrapper) DOM.wrapper.classList.remove('active-popup');
+    alert('Logged out successfully');
+}
+
+function setupLoginForm() {
+    const form = document.querySelector('.form-box-login form');
+    if (!form) return;
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        loadAccountsForLogin();
+
+        const email = form.querySelector('input[type="email"]').value.trim();
+        const password = form.querySelector('input[type="password"]').value.trim();
+
+        const matched = accountList.find(acc => acc.email === email && acc.password === password);
+
+        if (matched) {
+            if (DOM.wrapper) DOM.wrapper.classList.remove('active-popup');
+
+            sessionStorage.setItem('loggedInUser', JSON.stringify({
+                username: matched.username,
+                email: matched.email,
+                userRole: matched.userRole
+            }));
+
+            alert(`Logged in as ${matched.username} (${matched.userRole})`);
+
+            loadAccountsForLogin();
+            checkLogin();
+
+            form.reset();
+        } else {
+            alert('Invalid email or password');
+        }
+    });
+}
+
+// ============================================
+// Admin Contact Table
+// ============================================
+function getAdminAccounts() {
+    const data = getSavedData();
+    if (!data?.accountList?.length) return [];
+
+    return data.accountList.filter(acc => {
+        const role = acc.userRole?.toLowerCase() || '';
+        return role.includes('it') || role === 'administrator';
+    });
+}
+
+function getAdminContactInfo(admin) {
+    const name = admin.username || 'Administrator';
+    const email = admin.email;
+    const phone = admin.contact;
+
+    return { name, email, phone };
+}
+
+function renderAdminContactRow(admin) {
+    const { name, email, phone } = getAdminContactInfo(admin);
+
+    return `
+            <tr>
+                <td>${escapeHtml(name)}</td>
+                <td>
+                    <a href="mailto:${escapeHtml(email)}" class="email-link">
+                        <ion-icon name="mail-outline"></ion-icon> ${escapeHtml(email)}
+                    </a>
+                </td>
+                <td>
+                    <a href="tel:${escapeHtml(phone.replace(/\s/g, ''))}" class="phone-link">
+                        <ion-icon name="call-outline"></ion-icon> ${escapeHtml(phone)}
+                    </a>
+                </td>
+            </tr>
+        `;
+}
+
+function loadAdminContactsTable() {
+    if (!DOM.tableBody) return;
+
+    const adminAccounts = getAdminAccounts();
+
+    if (adminAccounts.length === 0) {
+        DOM.tableBody.innerHTML = `
+                <tr>
+                    <td colspan="3" style="color:darkblue; background:lightcyan; text-align:center; padding:5px;">
+                        No admin accounts available, Try contacting the IT service desk.
+                    </td>
+                </tr>
+            `;
+        return;
+    }
+
+    DOM.tableBody.innerHTML = adminAccounts.map(renderAdminContactRow).join('');
+}
+
+// ============================================
+// Event Setup
+// ============================================
+function setupEventListeners() {
+    if (DOM.loginBtn) {
+        DOM.loginBtn.addEventListener('click', () => {
+            if (DOM.loginBtn.textContent === 'LOGOUT') {
+                logout();
+            } else if (DOM.wrapper) {
+                DOM.wrapper.classList.add('active-popup');
+            }
+        });
+    }
+
+    if (DOM.iconClose && DOM.wrapper) {
+        DOM.iconClose.addEventListener('click', () => {
+            DOM.wrapper.classList.remove('active-popup');
+        });
+    }
+
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'internshipEvalData') {
+            loadAdminContactsTable();
+            renderAdminContactRow();
+        }
+    });
+}
+// ============================================
+// DOM Element Cache
+// ============================================
+function cacheDOMElements() {
+    DOM.wrapper = document.querySelector('.wrapper');
+    DOM.btnPopup = document.getElementById('loginBtn');
+    DOM.iconClose = document.querySelector('.icon-close');
+    DOM.loginForm = document.getElementById('contactLoginForm');
+    DOM.userInfo = document.getElementById('userInfo');
+    DOM.usernameDisplay = document.getElementById('usernameDisplay');
+    DOM.userRoleDisplay = document.getElementById('userRoleDisplay');
+    DOM.tableBody = document.getElementById('adminContactTableBody');
+    DOM.loginBtn = document.getElementById('loginBtn');
+}
+
+// ============================================
+// Initialization
+// ============================================
+function init() {
+    cacheDOMElements();
+    setupLoginForm();
+    setupEventListeners();
+    loadAdminContactsTable();
+    checkLogin();
+}
+
+// Start the application
+init();

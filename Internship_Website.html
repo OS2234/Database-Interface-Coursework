@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Student Internship Evaluation</title>
+    <link rel="stylesheet" href="global_styles.css">
     <link rel="stylesheet" href="dashboard_style.css">
 </head>
 
@@ -18,21 +19,23 @@
             <div class="menu">
                 <ul>
                     <li><a href="Internship_Website.html">DASHBOARD</a></li>
-                    <li><a href="#">LIST</a></li>
+                    <li><a href="list.html">LIST</a></li>
                     <li><a href="evaluation.html">EVALUATION</a></li>
                     <li><a href="contact.html">CONTACT</a></li>
                 </ul>
             </div>
 
+            <!--Login User Info-->
             <div class="login">
-                <div class="user-info" id="userInfo">
+                <button class="login_btn" id="loginBtn">LOGIN</button>
+                <div class="user-info" id="userInfo" style="display: none;">
                     <span class="username" id="usernameDisplay"></span>
                     <span class="user-role" id="userRoleDisplay"></span>
                 </div>
-                <button class="login_btn">LOGIN</button></a>
             </div>
         </div>
 
+        <!--Login Form-->
         <div class="wrapper">
             <span class="icon-close">
                 <ion-icon name="close-outline"></ion-icon>
@@ -61,6 +64,12 @@
 
         <div class="content">
             <h1> Student Internship Evaluation</h1>
+
+            <div id="accessDeniedMessage" class="access-denied" style="display: none;">
+                <div class="denied-icon">🔒</div>
+                <h2>Access Restricted</h2>
+                <p>Please log in an account to view the dashboard.</p>
+            </div>
 
             <div id="adminDashboard">
                 <div class="table-wrapper">
@@ -103,6 +112,7 @@
                                     <th>Enrol. Year</th>
                                     <th>Email</th>
                                     <th>Contact</th>
+                                    <th>Internship Period</th>
                                     <th>Status</th>
                                     <th>Assigned Assessor</th>
                                 </tr>
@@ -139,11 +149,69 @@
                     </div>
                 </div>
             </div>
+
+            <div id="assessorDashboard" style="display: none;">
+                <div class="assessor-welcome">
+                    <h2>👋 Welcome, <span id="assessorNameDisplay"></span>!</h2>
+                    <p>Here are your assigned students for evaluation.</p>
+                </div>
+
+                <!-- Pending Evaluations Table -->
+                <div class="table-wrapper">
+                    <div class="assessor-table-header">
+                        <h2>⏳ Pending Evaluations</h2>
+                        <span class="badge pending-count" id="pendingCount">0</span>
+                    </div>
+                    <div class="scrollable-table">
+                        <table id="pendingEvaluationsTable">
+                            <thead>
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>Student Name</th>
+                                    <th>Programme</th>
+                                    <th>Company</th>
+                                    <th>Year</th>
+                                    <th>Email</th>
+                                    <th>Contact</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pendingTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <div class="assessor-table-header">
+                        <h2>✅ Completed Evaluations</h2>
+                        <span class="badge completed-count" id="completedCount">0</span>
+                    </div>
+                    <div class="scrollable-table">
+                        <table id="completedEvaluationsTable">
+                            <thead>
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>Student Name</th>
+                                    <th>Programme</th>
+                                    <th>Company</th>
+                                    <th>Year</th>
+                                    <th>Email</th>
+                                    <th>Contact</th>
+                                    <th>Total Score</th>
+                                    <th>Evaluation Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="completedTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
+    </div>
 
 
-        <script src="dashboard_script.js"></script>
-        <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
-        <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    <script src="dashboard_script.js"></script>
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
 
 </body>

@@ -7,12 +7,6 @@
     position: relative;
 }
 
-.contact-content {
-    width: 1200px;
-    margin: 0 auto;
-    padding: 40px 0;
-}
-
 .contact-container {
     background: rgba(0, 0, 0, 0.75);
     backdrop-filter: blur(8px);
@@ -73,14 +67,18 @@
     color: cyan;
 }
 
-
-.emergency-note {
-    background: rgba(255, 100, 100, 0.15);
-    border-left: 4px solid #ff6666;
-    padding: 15px;
-    margin-top: 20px;
-    border-radius: 12px;
+.support-template p {
+    text-align: left;
+    margin-left: 27%;
+    margin-top: 30px;
+    width: 45%;
+    background: rgba(78, 26, 123, 0.2);
+    border-radius: 20px;
+    padding: 25px;
+    border: 1px solid aqua;
 }
+
+
 
 @media (max-width: 768px) {
     .contact-content {

@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Student Internship Evaluation | Contact Support</title>
-    <link rel="stylesheet" href="dashboard_style.css">
+    <link rel="stylesheet" href="global_styles.css">
     <link rel="stylesheet" href="contact_style.css">
 
 </head>
@@ -19,17 +19,17 @@
             <div class="menu">
                 <ul>
                     <li><a href="Internship_Website.html">DASHBOARD</a></li>
-                    <li><a href="#" id="listLink">LIST</a></li>
+                    <li><a href="list.html" id="listLink">LIST</a></li>
                     <li><a href="evaluation.html" id="evaluationLink">EVALUATION</a></li>
                     <li><a href="contact.html">CONTACT</a></li>
                 </ul>
             </div>
             <div class="login">
+                <button class="login_btn" id="loginBtn">LOGIN</button>
                 <div class="user-info" id="userInfo" style="display: none;">
                     <span class="username" id="usernameDisplay"></span>
                     <span class="user-role" id="userRoleDisplay"></span>
                 </div>
-                <button class="login_btn" id="loginBtn">LOGIN</button>
             </div>
         </div>
 
@@ -63,7 +63,7 @@
             <div class="contact-container">
                 <div class="contact-header">
                     <h1>📞 Administrator Support Center</h1>
-                    <p>Having trouble logging in or need assistance with your account registration?</p>
+                    <p>Offers assistance with account-related issues and updating list details</p>
                 </div>
                 <div class="admin-table-wrapper">
                     <h2 class="table-title">👥 Administrator Contact List</h2>
@@ -84,17 +84,25 @@
                 </div>
 
                 <div class="support-note">
-                    <p><strong>🔐 Can't access your account?</strong> Please contact any administrator above with your:
+                    <p><strong>🔐 Having issues with your account?</strong> Please contact any administrator above with
+                        your:
                     </p>
                     <p>• Full Name & Assessor ID <br>• Registered Email Address <br>• Brief description of the issue</p>
-                    <p>📌 <strong>IT Service Desk Hours:</strong> Monday-Friday, 9:00 AM - 5:00 PM (GMT)<br>
-                        🏢 <strong>Location:</strong> Room B14, Jubilee Campus, University of Nottingham</p>
+                    <div class="support-template">
+                        <p>
 
-                    <div class="emergency-note">
-                        <p><strong>⚠️ Emergency/Urgent Issues:</strong> Call +44 115 951 6677 (24/7 IT Support Hotline)
+                            <strong>📧 Email Template:</strong><br>
+                            Subject: Account Access Issue - [Your Full Name] <br><br>
+                            Dear [Administrator's Name],<br><br>
+                            I am experiencing difficulties accessing my account on the Student Internship Evaluation
+                            System. <br><br>
+                            [Further Description of Issue]<br><br>
+                            Full Name: [Your Full Name]<br>
+                            Assessor ID: [Your Assessor ID]<br>
+                            Registered Email: [Your Registered Email]<br>
+
                         </p>
                     </div>
-
                 </div>
             </div>
         </div>
