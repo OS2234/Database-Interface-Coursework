@@ -1,288 +1,143 @@
 -- phpMyAdmin SQL Dump
--- version 5.1.2
--- https://www.phpmyadmin.net/
---
--- Host: localhost:3306
--- Generation Time: Apr 05, 2026 at 11:29 AM
--- Server version: 5.7.24
--- PHP Version: 8.3.1
+-- Database: `student_records`
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
 
-
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8mb4 */;
-
---
--- Database: `student_records`
---
+-- Create Database
 CREATE DATABASE IF NOT EXISTS `student_records` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
 USE `student_records`;
 
 -- --------------------------------------------------------
-
---
--- Table structure for table `assessment_criteria`
---
-
-CREATE TABLE `assessment_criteria` (
-  `criteria_id` bigint(10) NOT NULL,
-  `criteria_name` varchar(30) NOT NULL,
-  `weightage` varchar(30) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
---
--- Dumping data for table `assessment_criteria`
---
-
-INSERT INTO `assessment_criteria` (`criteria_id`, `criteria_name`, `weightage`) VALUES
-(1, 'Communication', '20'),
-(2, 'Technical Skills', '30'),
-(3, 'Teamwork', '20'),
-(4, 'Problem Solving', '20'),
-(5, 'Attendance', '10');
-
+-- Table: user
 -- --------------------------------------------------------
-
---
--- Table structure for table `assessment_result`
---
-
-CREATE TABLE `assessment_result` (
-  `result_id` bigint(10) NOT NULL,
-  `internship_id` bigint(10) NOT NULL,
-  `criteria_id` bigint(10) NOT NULL,
-  `marks_obtained` mediumint(5) NOT NULL,
-  `remark` varchar(30) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
---
--- Dumping data for table `assessment_result`
---
-
-INSERT INTO `assessment_result` (`result_id`, `internship_id`, `criteria_id`, `marks_obtained`, `remark`) VALUES
-(401, 301, 1, 18, 'Good'),
-(402, 301, 2, 25, 'Very Good'),
-(403, 302, 3, 17, 'Good'),
-(404, 303, 4, 19, 'Excellent'),
-(405, 304, 5, 9, 'Regular');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `assessor`
---
-
-CREATE TABLE `assessor` (
-  `assessor_id` bigint(20) NOT NULL,
-  `user_id` bigint(8) NOT NULL,
-  `department` varchar(30) NOT NULL,
-  `role` varchar(30) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
---
--- Dumping data for table `assessor`
---
-
-INSERT INTO `assessor` (`assessor_id`, `user_id`, `department`, `role`) VALUES
-(201, 2, 'CSE', 'Senior'),
-(202, 3, 'IT', 'Senior'),
-(203, 4, 'ECE', 'Junior'),
-(204, 5, 'MECH', 'Senior'),
-(205, 2, 'CIVIL', 'Junior');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `final_result`
---
-
-CREATE TABLE `final_result` (
-  `final_result_id` bigint(10) NOT NULL,
-  `internship_id` bigint(10) NOT NULL,
-  `total_score` bigint(10) NOT NULL,
-  `grade` varchar(5) DEFAULT NULL,
-  `submitted_date` date NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
---
--- Dumping data for table `final_result`
---
-
-INSERT INTO `final_result` (`final_result_id`, `internship_id`, `total_score`, `grade`, `submitted_date`) VALUES
-(501, 301, 85, 'A', '2024-08-02'),
-(502, 302, 80, 'A', '2024-08-06'),
-(503, 303, 78, 'B+', '2024-08-11'),
-(504, 304, 82, 'A', '2024-08-16'),
-(505, 305, 75, 'B', '2024-08-21');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `internship`
---
-
-CREATE TABLE `internship` (
-  `internship_id` bigint(10) NOT NULL,
-  `student_id` bigint(10) NOT NULL,
-  `assessor_id` bigint(10) NOT NULL,
-  `company_name` varchar(30) NOT NULL,
-  `start_date` date NOT NULL,
-  `end_date` date NOT NULL,
-  `status` varchar(10) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
---
--- Dumping data for table `internship`
---
-
-INSERT INTO `internship` (`internship_id`, `student_id`, `assessor_id`, `company_name`, `start_date`, `end_date`, `status`) VALUES
-(301, 101, 201, 'TCS', '2024-06-01', '2024-08-01', 'Completed'),
-(302, 102, 202, 'Infosys', '2024-06-05', '2024-08-05', 'Completed'),
-(303, 103, 203, 'Wipro', '2024-06-10', '2024-08-10', 'Completed'),
-(304, 104, 204, 'HCL', '2024-06-15', '2024-08-15', 'Completed'),
-(305, 105, 205, 'TechM', '2024-06-20', '2024-08-20', 'Completed');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `student`
---
-
-CREATE TABLE `student` (
-  `student_id` bigint(10) NOT NULL,
-  `name` varchar(30) NOT NULL,
-  `email` varchar(30) NOT NULL,
-  `programme` varchar(30) NOT NULL,
-  `enrolment_year` bigint(10) NOT NULL,
-  `student_email` varchar(100) NOT NULL DEFAULT 'noemail@mail.com',
-  `contact` bigint(10) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
---
--- Dumping data for table `student`
---
-
-INSERT INTO `student` (`student_id`, `name`, `email`, `programme`, `enrolment_year`, `student_email`, `contact`) VALUES
-(101, 'Arun', 'arun@mail.com', 'CSE', 2022, 'noemail@mail.com', 9876543210),
-(102, 'Bala', 'bala@mail.com', 'IT', 2022, 'noemail@mail.com', 9876543211),
-(103, 'Charan', 'charan@mail.com', 'ECE', 2021, 'noemail@mail.com', 9876543212),
-(104, 'Deepak', 'deepak@mail.com', 'MECH', 2021, 'noemail@mail.com', 9876543213),
-(105, 'Eshan', 'eshan@mail.com', 'CIVIL', 2020, 'noemail@mail.com', 9876543214);
-
--- --------------------------------------------------------
-
---
--- Table structure for table `user`
---
-
 CREATE TABLE `user` (
-  `user_id` bigint(10) NOT NULL,
-  `username` varchar(30) NOT NULL,
-  `email` varchar(30) NOT NULL,
-  `password` varchar(30) DEFAULT NULL,
-  `role` varchar(30) NOT NULL,
-  `date_created` date NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+  `user_id` int(11) NOT NULL AUTO_INCREMENT,
+  `username` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `role` varchar(50) NOT NULL,
+  `contact` varchar(20) DEFAULT NULL,
+  `date_created` date NOT NULL,
+  PRIMARY KEY (`user_id`),
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
---
--- Dumping data for table `user`
---
+-- --------------------------------------------------------
+-- Table: assessor
+-- --------------------------------------------------------
+CREATE TABLE `assessor` (
+  `assessor_id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `department` varchar(100) DEFAULT NULL,
+  `role` varchar(50) DEFAULT 'Assessor',
+  PRIMARY KEY (`assessor_id`),
+  KEY `fk_assessor_user` (`user_id`),
+  CONSTRAINT `fk_assessor_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `user` (`user_id`, `username`, `email`, `password`, `role`, `date_created`) VALUES
-(1, 'admin1', 'admin1@mail.com', 'pass123', 'admin', '2024-01-01'),
-(2, 'assessor1', 'ass1@mail.com', 'pass123', 'assessor', '2024-01-02'),
-(3, 'assessor2', 'ass2@mail.com', 'pass123', 'assessor', '2024-01-03'),
-(4, 'assessor3', 'ass3@mail.com', 'pass123', 'assessor', '2024-01-04'),
-(5, 'assessor4', 'ass4@mail.com', 'pass123', 'assessor', '2024-01-05');
+-- --------------------------------------------------------
+-- Table: student
+-- --------------------------------------------------------
+CREATE TABLE `student` (
+  `student_id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `student_email` varchar(100) NOT NULL,
+  `student_contact` varchar(20) DEFAULT NULL,
+  `enrollment_year` int(11) DEFAULT NULL,
+  `programme` varchar(100) DEFAULT NULL,
+  `assigned_assessor` int(11) DEFAULT NULL,
+  PRIMARY KEY (`student_id`),
+  KEY `fk_student_assessor` (`assigned_assessor`),
+  CONSTRAINT `fk_student_assessor` FOREIGN KEY (`assigned_assessor`) REFERENCES `assessor` (`assessor_id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
---
--- Indexes for dumped tables
---
+-- --------------------------------------------------------
+-- Table: internship
+-- --------------------------------------------------------
+CREATE TABLE `internship` (
+  `internship_id` int(11) NOT NULL AUTO_INCREMENT,
+  `student_id` int(11) NOT NULL,
+  `assessor_id` int(11) DEFAULT NULL,
+  `company_name` varchar(200) DEFAULT NULL,
+  `start_date` date DEFAULT NULL,
+  `end_date` date DEFAULT NULL,
+  `status` varchar(50) DEFAULT 'Pending',
+  `internship_notes` text,
+  PRIMARY KEY (`internship_id`),
+  KEY `fk_internship_student` (`student_id`),
+  KEY `fk_internship_assessor` (`assessor_id`),
+  CONSTRAINT `fk_internship_assessor` FOREIGN KEY (`assessor_id`) REFERENCES `assessor` (`assessor_id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_internship_student` FOREIGN KEY (`student_id`) REFERENCES `student` (`student_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
---
--- Indexes for table `assessment_criteria`
---
-ALTER TABLE `assessment_criteria`
-  ADD PRIMARY KEY (`criteria_id`);
+-- --------------------------------------------------------
+-- Table: assessment_criteria
+-- --------------------------------------------------------
+CREATE TABLE `assessment_criteria` (
+  `criteria_id` int(11) NOT NULL AUTO_INCREMENT,
+  `criteria_name` varchar(100) NOT NULL,
+  `criteria_key` varchar(50) NOT NULL,
+  `weightage` int(11) NOT NULL,
+  PRIMARY KEY (`criteria_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
---
--- Indexes for table `assessment_result`
---
-ALTER TABLE `assessment_result`
-  ADD PRIMARY KEY (`result_id`),
-  ADD KEY `fk_result_internship` (`internship_id`),
-  ADD KEY `fk_result_criteria` (`criteria_id`);
+-- Insert assessment criteria
+INSERT INTO `assessment_criteria` (`criteria_id`, `criteria_name`, `criteria_key`, `weightage`) VALUES
+(1, 'Undertaking Tasks/Projects', 'undertaking', 10),
+(2, 'Health and Safety Requirements at the Workplace', 'health_safety', 10),
+(3, 'Connectivity and Use of Theoretical Knowledge', 'connectivity', 10),
+(4, 'Presentation of the Report as a Written Document', 'presentation', 15),
+(5, 'Clarity of Language and Illustration', 'clarity', 10),
+(6, 'Lifelong Learning Activities', 'learning', 15),
+(7, 'Project Management', 'project', 15),
+(8, 'Time Management', 'time', 15);
 
---
--- Indexes for table `assessor`
---
-ALTER TABLE `assessor`
-  ADD PRIMARY KEY (`assessor_id`),
-  ADD KEY `fk_assessor_user` (`user_id`);
+-- --------------------------------------------------------
+-- Table: evaluation
+-- --------------------------------------------------------
+CREATE TABLE `evaluation` (
+  `evaluation_id` int(11) NOT NULL AUTO_INCREMENT,
+  `student_id` int(11) NOT NULL,
+  `assessor_id` int(11) NOT NULL,
+  `scores` text,
+  `weighted_total` decimal(5,2) DEFAULT NULL,
+  `remarks` text,
+  `evaluated_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`evaluation_id`),
+  KEY `fk_evaluation_student` (`student_id`),
+  KEY `fk_evaluation_assessor` (`assessor_id`),
+  CONSTRAINT `fk_evaluation_assessor` FOREIGN KEY (`assessor_id`) REFERENCES `assessor` (`assessor_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_evaluation_student` FOREIGN KEY (`student_id`) REFERENCES `student` (`student_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
---
--- Indexes for table `final_result`
---
-ALTER TABLE `final_result`
-  ADD PRIMARY KEY (`final_result_id`),
-  ADD KEY `fk_final_internship` (`internship_id`);
+-- --------------------------------------------------------
+-- Insert Sample Data (with hashed passwords - all use 'password123')
+-- --------------------------------------------------------
 
---
--- Indexes for table `internship`
---
-ALTER TABLE `internship`
-  ADD PRIMARY KEY (`internship_id`),
-  ADD KEY `fk_internship_student` (`student_id`),
-  ADD KEY `fk_internship_assessor` (`assessor_id`);
+-- Password: 'password123' hashed
+-- Admin user
+INSERT INTO `user` (`user_id`, `username`, `email`, `password`, `role`, `contact`, `date_created`) VALUES
+(1, 'Admin User', 'admin@nottingham.edu', '$2y$10$w3PyWbcpINBj1HsNQrvu3O5IHyQJjshJnlkM1TROVvk3g4RWD2iCm', 'Administrator', '012-3456789', CURDATE()),
+(2, 'Jane Smith', 'jane.smith@nottingham.edu', '$2y$10$5.xrRg2UNdWZ0kK5OkZNMewDT/bRsu42vOcPNQngUxL54rMPq2yGi', 'Assessor', '012-3456790', CURDATE()),
+(3, 'Alan Grant', 'a.grant@nottingham.edu', '$2y$10$onuAxMZdzP1dise985R0yOd8suJdNfAWcvweCeUO6nmiwomOgJKye', 'Assessor', '012-3456791', CURDATE());
 
---
--- Indexes for table `student`
---
-ALTER TABLE `student`
-  ADD PRIMARY KEY (`student_id`);
+-- Insert assessors
+INSERT INTO `assessor` (`assessor_id`, `user_id`, `department`, `role`) VALUES
+(1, 2, 'Computer Science', 'Senior Assessor'),
+(2, 3, 'Engineering', 'Assessor');
 
---
--- Indexes for table `user`
---
-ALTER TABLE `user`
-  ADD PRIMARY KEY (`user_id`);
+-- Insert students
+INSERT INTO `student` (`student_id`, `name`, `student_email`, `student_contact`, `enrollment_year`, `programme`, `assigned_assessor`) VALUES
+(1001, 'Emma Watson', 'emma.watson@student.edu', '0111222333', 2023, 'Computer Science', 1),
+(1002, 'James Brown', 'james.brown@student.edu', '0444555666', 2022, 'Engineering', 1),
+(1003, 'Luis Chen', 'luis.chen@student.edu', '0777888999', 2024, 'Business', 2);
 
---
--- Constraints for dumped tables
---
+-- Insert internships
+INSERT INTO `internship` (`internship_id`, `student_id`, `assessor_id`, `company_name`, `start_date`, `end_date`, `status`, `internship_notes`) VALUES
+(1, 1001, 1, 'Innovate Tech', '2025-06-01', '2025-08-01', 'Evaluated', 'Excellent performance'),
+(2, 1002, 1, 'BuildCorp', '2025-06-05', '2025-08-05', 'Ongoing', NULL),
+(3, 1003, 2, 'FinGroup', '2025-06-10', '2025-08-10', 'Pending', NULL);
 
---
--- Constraints for table `assessment_result`
---
-ALTER TABLE `assessment_result`
-  ADD CONSTRAINT `fk_result_criteria` FOREIGN KEY (`criteria_id`) REFERENCES `assessment_criteria` (`criteria_id`),
-  ADD CONSTRAINT `fk_result_internship` FOREIGN KEY (`internship_id`) REFERENCES `internship` (`internship_id`);
-
---
--- Constraints for table `assessor`
---
-ALTER TABLE `assessor`
-  ADD CONSTRAINT `fk_assessor_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`);
-
---
--- Constraints for table `final_result`
---
-ALTER TABLE `final_result`
-  ADD CONSTRAINT `fk_final_internship` FOREIGN KEY (`internship_id`) REFERENCES `internship` (`internship_id`);
-
---
--- Constraints for table `internship`
---
-ALTER TABLE `internship`
-  ADD CONSTRAINT `fk_internship_assessor` FOREIGN KEY (`assessor_id`) REFERENCES `assessor` (`assessor_id`),
-  ADD CONSTRAINT `fk_internship_student` FOREIGN KEY (`student_id`) REFERENCES `student` (`student_id`);
 COMMIT;
-
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

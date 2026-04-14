@@ -12,10 +12,19 @@
     margin-bottom: 10px;
 }
 
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
 .table-header h2 {
     color: var(--primary-cyan);
-    font-size: 46px;
-    margin-bottom: 10px;
+    font-size: 36px;
+    margin-bottom: 0;
 }
 
 /* Assigned Students List */
@@ -43,7 +52,8 @@
     padding: 8px 12px;
 }
 
-.add-form-row input {
+.add-form-row input,
+.add-form-row select {
     background: rgba(255, 255, 255, 0.95);
     border: 1px solid cyan;
     border-radius: 4px;
@@ -96,8 +106,17 @@
     border-color: aqua;
 }
 
-/* Table Action Buttons */
-.table-btn {
+/* ============================================ */
+/* TABLE ACTION BUTTONS - USING CLASS SELECTORS */
+/* ============================================ */
+
+/* Hide all edit/delete buttons by default - using CLASS selectors (dot) not ID selectors (#) */
+.edit-account-btn,
+.delete-account-btn,
+.edit-student-btn,
+.delete-student-btn,
+.edit-assessor-btn,
+.delete-assessor-btn {
     background: transparent;
     border: 1.5px solid white;
     color: white;
@@ -108,63 +127,97 @@
     font-size: 0.75rem;
     transition: 0.2s;
     white-space: nowrap;
-}
+    margin: 0 2px;
 
-#edit-account-btn,
-#edit-student-btn,
-#edit-assessor-btn,
-#delete-account-btn,
-#delete-student-btn,
-#delete-assessor-btn,
-#evaluate-btn,
-#view-btn {
+    /* Hidden by default */
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
 }
 
-tr.selected-row #edit-account-btn,
-tr.selected-row #delete-account-btn,
-tr.selected-row #edit-student-btn,
-tr.selected-row #delete-student-btn,
-tr.selected-row #edit-assessor-btn,
-tr.selected-row #delete-assessor-btn,
-tr.selected-row #evaluate-btn,
-tr.selected-row #view-btn {
+/* Show buttons ONLY when parent row has selected-row class */
+.scrollable-table tbody tr.selected-row .edit-account-btn,
+.scrollable-table tbody tr.selected-row .delete-account-btn,
+.scrollable-table tbody tr.selected-row .edit-student-btn,
+.scrollable-table tbody tr.selected-row .delete-student-btn,
+.scrollable-table tbody tr.selected-row .edit-assessor-btn,
+.scrollable-table tbody tr.selected-row .delete-assessor-btn {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
 }
 
-#edit-account-btn:hover,
-#edit-student-btn:hover,
-#edit-assessor-btn:hover {
+/* Hover effects for Edit buttons */
+.edit-account-btn:hover,
+.edit-student-btn:hover,
+.edit-assessor-btn:hover {
     background: darkblue;
 }
 
-#delete-account-btn:hover,
-#delete-student-btn:hover,
-#delete-assessor-btn:hover {
+/* Hover effects for Delete buttons */
+.delete-account-btn:hover,
+.delete-student-btn:hover,
+.delete-assessor-btn:hover {
     background: red;
 }
 
-#evaluate-btn:hover {
+/* ============================================ */
+/* EVALUATE AND VIEW BUTTONS (Assessor Dashboard) */
+/* ============================================ */
+.evaluate-btn,
+.view-btn {
+    background: transparent;
+    border: 1.5px solid white;
+    color: white;
+    font-weight: bold;
+    border-radius: 20px;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: 0.2s;
+    white-space: nowrap;
+    margin: 0 2px;
+}
+
+.evaluate-btn:hover {
     background: #073f20;
 }
 
-#view-btn:hover {
+.view-btn:hover {
     background: #a5aa17;
 }
 
-[id^="save-account-btn"]:hover,
-[id^="save-student-btn"]:hover,
-[id^="save-assessor-btn"]:hover {
+/* ============================================ */
+/* SAVE AND CANCEL BUTTONS - ALWAYS VISIBLE */
+/* ============================================ */
+.save-account-btn,
+.cancel-account-btn,
+.save-student-btn,
+.cancel-student-btn,
+.save-assessor-btn,
+.cancel-assessor-btn {
+    background: transparent;
+    border: 1.5px solid white;
+    color: white;
+    font-weight: bold;
+    border-radius: 20px;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: 0.2s;
+    white-space: nowrap;
+    margin: 0 2px;
+}
+
+.save-account-btn:hover,
+.save-student-btn:hover,
+.save-assessor-btn:hover {
     background: green;
 }
 
-[id^="cancel-account-btn"]:hover,
-[id^="cancel-student-btn"]:hover,
-[id^="cancel-assessor-btn"]:hover {
+.cancel-account-btn:hover,
+.cancel-student-btn:hover,
+.cancel-assessor-btn:hover {
     background: maroon;
 }
 
@@ -203,6 +256,7 @@ tr.selected-row #view-btn {
     border: none;
     box-shadow: none;
     padding: 0px;
+    text-align: center;
 }
 
 .badge {
@@ -265,4 +319,13 @@ tr.selected-row #view-btn {
 .score-low {
     color: var(--error);
     font-weight: bold;
+}
+
+/* Ensure action-cell has proper styling for buttons */
+.scrollable-table td.action-cell {
+    text-align: center;
+    background: none;
+    border: none;
+    box-shadow: none;
+    padding: 8px;
 }

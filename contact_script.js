@@ -26,29 +26,33 @@ function escapeHtml(str) {
     });
 }
 
-function getSavedData() {
-    const saved = localStorage.getItem('internshipEvalData');
-    if (saved) {
-        try {
-            return JSON.parse(saved);
-        } catch (e) {
-            console.error('Error loading data:', e);
+// ============================================
+// API Data Loading
+// ============================================
+async function loadAccountsFromAPI() {
+    try {
+        const users = await API.getUsers();
+        if (Array.isArray(users) && users.length > 0) {
+            accountList = users.map(u => ({
+                username: u.username || '',
+                email: u.email || '',
+                password: '••••••',
+                userRole: u.role || '',
+                contact: u.contact || '',
+                createdAt: u.date_created ? new Date(u.date_created).toLocaleDateString('en-GB') : '',
+                user_id: u.user_id
+            }));
+            return true;
         }
-    }
-    return null;
-}
-
-// ============================================
-// Account Loading
-// ============================================
-function loadAccountsForLogin() {
-    const data = getSavedData();
-    if (data?.accountList?.length) {
-        accountList = data.accountList;
-        return true;
+    } catch (error) {
+        console.error('Error loading accounts:', error);
     }
     accountList = [];
     return false;
+}
+
+function loadAccountsForLogin() {
+    return accountList.length > 0;
 }
 
 // ============================================
@@ -57,7 +61,6 @@ function loadAccountsForLogin() {
 
 function checkLogin() {
     const loggedIn = sessionStorage.getItem('loggedInUser');
-
     const user = JSON.parse(loggedIn);
     if (!user) return;
 
@@ -91,33 +94,33 @@ function setupLoginForm() {
     const form = document.querySelector('.form-box-login form');
     if (!form) return;
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
-
-        loadAccountsForLogin();
 
         const email = form.querySelector('input[type="email"]').value.trim();
         const password = form.querySelector('input[type="password"]').value.trim();
 
-        const matched = accountList.find(acc => acc.email === email && acc.password === password);
+        const result = await API.login(email, password);
 
-        if (matched) {
+        if (result.success) {
             if (DOM.wrapper) DOM.wrapper.classList.remove('active-popup');
 
             sessionStorage.setItem('loggedInUser', JSON.stringify({
-                username: matched.username,
-                email: matched.email,
-                userRole: matched.userRole
+                username: result.user.username,
+                email: result.user.email,
+                userRole: result.user.userRole,
+                userId: result.user.user_id
             }));
 
-            alert(`Logged in as ${matched.username} (${matched.userRole})`);
+            alert(`Logged in as ${result.user.username} (${result.user.userRole})`);
 
-            loadAccountsForLogin();
+            await loadAccountsFromAPI();
+            loadAdminContactsTable();
             checkLogin();
 
             form.reset();
         } else {
-            alert('Invalid email or password');
+            alert(result.message || 'Invalid email or password');
         }
     });
 }
@@ -126,19 +129,16 @@ function setupLoginForm() {
 // Admin Contact Table
 // ============================================
 function getAdminAccounts() {
-    const data = getSavedData();
-    if (!data?.accountList?.length) return [];
-
-    return data.accountList.filter(acc => {
+    return accountList.filter(acc => {
         const role = acc.userRole?.toLowerCase() || '';
-        return role.includes('it') || role === 'administrator';
+        return role === 'administrator';
     });
 }
 
 function getAdminContactInfo(admin) {
     const name = admin.username || 'Administrator';
     const email = admin.email;
-    const phone = admin.contact;
+    const phone = admin.contact || 'Not provided';
 
     return { name, email, phone };
 }
@@ -147,35 +147,37 @@ function renderAdminContactRow(admin) {
     const { name, email, phone } = getAdminContactInfo(admin);
 
     return `
-            <tr>
-                <td>${escapeHtml(name)}</td>
-                <td>
-                    <a href="mailto:${escapeHtml(email)}" class="email-link">
-                        <ion-icon name="mail-outline"></ion-icon> ${escapeHtml(email)}
-                    </a>
-                </td>
-                <td>
-                    <a href="tel:${escapeHtml(phone.replace(/\s/g, ''))}" class="phone-link">
-                        <ion-icon name="call-outline"></ion-icon> ${escapeHtml(phone)}
-                    </a>
-                </td>
-            </tr>
-        `;
+        <tr>
+            <td>${escapeHtml(name)}</td>
+            <td>
+                <a href="mailto:${escapeHtml(email)}" class="email-link" style="color: cyan;">
+                    <ion-icon name="mail-outline"></ion-icon> ${escapeHtml(email)}
+                </a>
+            </td>
+            <td>
+                <a href="tel:${escapeHtml(phone.replace(/\s/g, ''))}" class="phone-link" style="color: cyan;">
+                    <ion-icon name="call-outline"></ion-icon> ${escapeHtml(phone)}
+                </a>
+            </td>
+        </tr>
+    `;
 }
 
-function loadAdminContactsTable() {
+async function loadAdminContactsTable() {
     if (!DOM.tableBody) return;
+
+    await loadAccountsFromAPI();
 
     const adminAccounts = getAdminAccounts();
 
     if (adminAccounts.length === 0) {
         DOM.tableBody.innerHTML = `
-                <tr>
-                    <td colspan="3" style="color:darkblue; background:lightcyan; text-align:center; padding:5px;">
-                        No admin accounts available, Try contacting the IT service desk.
-                    </td>
-                </tr>
-            `;
+            <tr>
+                <td colspan="3" style="color:darkblue; background:lightcyan; text-align:center; padding:5px;">
+                    No admin accounts available. Please contact the IT service desk.
+                </td>
+            </tr>
+        `;
         return;
     }
 
@@ -201,14 +203,8 @@ function setupEventListeners() {
             DOM.wrapper.classList.remove('active-popup');
         });
     }
-
-    window.addEventListener('storage', (e) => {
-        if (e.key === 'internshipEvalData') {
-            loadAdminContactsTable();
-            renderAdminContactRow();
-        }
-    });
 }
+
 // ============================================
 // DOM Element Cache
 // ============================================
@@ -227,8 +223,9 @@ function cacheDOMElements() {
 // ============================================
 // Initialization
 // ============================================
-function init() {
+async function init() {
     cacheDOMElements();
+    await loadAccountsFromAPI();
     setupLoginForm();
     setupEventListeners();
     loadAdminContactsTable();

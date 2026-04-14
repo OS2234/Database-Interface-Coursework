@@ -64,7 +64,6 @@ const EVALUATION_CRITERIA = [
 ];
 
 const STORAGE_KEYS = {
-    EVAL_DATA: 'internshipEvalData',
     EVALUATIONS: 'assessorEvaluations'
 };
 
@@ -82,6 +81,7 @@ function escapeHtml(str) {
 }
 
 function formatDate(dateString) {
+    if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('en-GB');
 }
 
@@ -90,22 +90,89 @@ function generateEvaluationKey(assessorId, studentId) {
 }
 
 // ==============================
-// Data Management
-//==============================
-function loadDataFromLocalStorage() {
-    const savedData = localStorage.getItem(STORAGE_KEYS.EVAL_DATA);
-    if (savedData) {
-        try {
-            const parsed = JSON.parse(savedData);
-            State.studentList = parsed.studentList || [];
-            State.assessorList = parsed.assessorList || [];
-            State.accountList = parsed.accountList || [];
-            return true;
-        } catch (error) {
-            console.error('Error loading data:', error);
-        }
+// API Data Loading
+// ==============================
+async function loadDataFromAPI() {
+    try {
+        console.log('Loading data from API for evaluation page...');
+
+        const [students, assessors, users] = await Promise.all([
+            API.getStudents(),
+            API.getAssessors(),
+            API.getUsers()
+        ]);
+
+        console.log('Students received:', students);
+        console.log('Assessors received:', assessors);
+        console.log('Users received:', users);
+
+        // Ensure we have arrays
+        const studentsArray = Array.isArray(students) ? students : [];
+        const assessorsArray = Array.isArray(assessors) ? assessors : [];
+        const usersArray = Array.isArray(users) ? users : [];
+
+        // Transform students data
+        State.studentList = studentsArray.map(s => ({
+            id: s.student_id?.toString() || '',
+            name: s.name || '',
+            programme: s.programme || '',
+            company: s.company_name || '',
+            year: s.enrollment_year?.toString() || '',
+            email: s.student_email || '',
+            contact: s.student_contact?.toString() || '',
+            status: s.status || s.internship_status || 'Pending',
+            assigned_assessor: s.assessor_name || '',
+            internshipPeriod: formatDateRange(s.start_date, s.end_date),
+            student_id: s.student_id,
+            start_date: s.start_date,
+            end_date: s.end_date,
+            assigned_assessor_id: s.assigned_assessor
+        }));
+
+        // Transform assessors data
+        State.assessorList = assessorsArray.map(a => ({
+            id: a.assessor_id?.toString() || '',
+            name: a.username || '',
+            role: a.role || 'Assessor',
+            dept: a.department || '',
+            email: a.email || '',
+            contact: a.contact || '',
+            assignedStudentIds: Array.isArray(a.assigned_student_ids) ? a.assigned_student_ids.map(id => id.toString()) : [],
+            assessor_id: a.assessor_id,
+            user_id: a.user_id
+        }));
+
+        // Transform users/accounts data
+        State.accountList = usersArray.map(u => ({
+            username: u.username || '',
+            email: u.email || '',
+            password: '••••••',
+            userRole: u.role || '',
+            contact: u.contact || '',
+            createdAt: u.date_created ? new Date(u.date_created).toLocaleDateString('en-GB') : '',
+            user_id: u.user_id
+        }));
+
+        console.log('Transformed studentList:', State.studentList.length);
+        console.log('Transformed assessorList:', State.assessorList.length);
+
+        return true;
+    } catch (error) {
+        console.error('Error loading data:', error);
+        State.studentList = [];
+        State.assessorList = [];
+        State.accountList = [];
+        return false;
     }
-    return false;
+}
+
+function formatDateRange(startDate, endDate) {
+    if (!startDate && !endDate) return '—';
+    if (startDate && endDate) {
+        return `${formatDate(startDate)} to ${formatDate(endDate)}`;
+    }
+    if (startDate) return `${formatDate(startDate)} onwards`;
+    return `Until ${formatDate(endDate)}`;
 }
 
 function loadEvaluationsFromStorage() {
@@ -139,20 +206,10 @@ function saveStudentEvaluation(studentId, assessorId, evaluationData) {
     };
     saveEvaluationsToStorage();
 
+    // Update student status in the local state
     const student = State.studentList.find(s => s.id === studentId);
     if (student && student.status !== 'Evaluated') {
         student.status = 'Evaluated';
-        const savedData = localStorage.getItem(STORAGE_KEYS.EVAL_DATA);
-        if (savedData) {
-            const parsed = JSON.parse(savedData);
-            parsed.studentList = State.studentList;
-            localStorage.setItem(STORAGE_KEYS.EVAL_DATA, JSON.stringify(parsed));
-        }
-    }
-
-    // Refresh admin view if needed
-    if (State.userRole === 'administrator' && DOM.assessorDropdown?.value) {
-        displayStudentsForAssessor(DOM.assessorDropdown.value);
     }
 }
 
@@ -181,7 +238,6 @@ function collectEvaluationData() {
     const weightedTotal = calculateWeightedTotal();
     let remarks = DOM.assessorRemarks?.value || '';
 
-    // Auto-generate remarks if empty
     if (!remarks) {
         remarks = "No remarks given";
     }
@@ -228,20 +284,18 @@ function displayStudentsForAssessor(assessorId) {
 
     const studentsHtml = assignedStudents.map(student => {
         const hasEvaluation = Object.values(State.assessorEvaluations).some(e => e.studentId === student.id);
-
-        // Determine status badge, icon, and color
         let statusIcon = '⏳';
         let statusText = 'Pending';
-        let statusColor = '#ff9800'; // Orange for pending
+        let statusColor = '#ff9800';
 
         if (hasEvaluation) {
             statusIcon = '✅';
             statusText = 'Evaluated';
-            statusColor = '#4caf50'; // Green for evaluated
+            statusColor = '#4caf50';
         } else if (student.status === 'Ongoing') {
             statusIcon = '🔄';
             statusText = 'Ongoing';
-            statusColor = '#2196f3'; // Blue for ongoing
+            statusColor = '#2196f3';
         }
 
         return `
@@ -255,7 +309,6 @@ function displayStudentsForAssessor(assessorId) {
     DOM.studentsListContainer.innerHTML = studentsHtml;
     DOM.studentsSection.style.display = 'block';
 
-    // Attach click handlers
     document.querySelectorAll('.student-chip').forEach(chip => {
         chip.addEventListener('click', () => {
             document.querySelectorAll('.student-chip').forEach(c => c.classList.remove('active-student'));
@@ -270,7 +323,6 @@ function displayStudentsForAssessor(assessorId) {
 }
 
 function displayStudentMarks(studentId, studentName, assessorId = null) {
-    // Find evaluation
     let marksData = null;
     let evaluatingAssessorId = null;
 
@@ -289,7 +341,6 @@ function displayStudentMarks(studentId, studentName, assessorId = null) {
         }
     }
 
-    // Update header with student name
     let studentBadge = document.getElementById('selectedStudentNameSpan');
     if (!studentBadge) {
         const panelHeader = document.querySelector('.panel-header');
@@ -306,10 +357,10 @@ function displayStudentMarks(studentId, studentName, assessorId = null) {
 
     if (!marksData) {
         DOM.marksBreakdown.innerHTML = `
-            <div class="no-evaluation-message" style="text-align: center; padding: 40px; background: rgba(0,0,0,0.5); border-radius: 16px;">
+            <div class="no-evaluation-message">
                 <ion-icon name="document-text-outline" style="font-size: 48px; color: #ff9800;"></ion-icon>
-                <h3 style="color: #ff9800; margin-top: 15px;">No Evaluation Submitted Yet</h3>
-                <p style="color: #ccc; margin-top: 10px;">This student hasn't been evaluated by their assigned assessor.</p>
+                <h3>No Evaluation Submitted Yet</h3>
+                <p>This student hasn't been evaluated by their assigned assessor.</p>
             </div>
         `;
         DOM.remarksSection.innerHTML = '';
@@ -318,7 +369,6 @@ function displayStudentMarks(studentId, studentName, assessorId = null) {
         return;
     }
 
-    // Render marks grid
     const marksHtml = `
         <div class="marks-grid">
             ${EVALUATION_CRITERIA.map(criterion => {
@@ -343,7 +393,7 @@ function displayStudentMarks(studentId, studentName, assessorId = null) {
 
     DOM.remarksSection.innerHTML = `
         <div class="remarks-box">
-            <div class="remarks-title"><ion-icon name="chatbubble-outline"></ion-icon> Assessor's Remarks & Feedback</div>
+            <div class="remarks-title">Assessor's Remarks & Feedback</div>
             <div class="remarks-text">${escapeHtml(marksData.remarks)}</div>
             <div style="margin-top: 12px; font-size: 12px; color: #88aaff;">
                 📅 Evaluated on: ${formatDate(marksData.evaluatedAt)}
@@ -354,10 +404,7 @@ function displayStudentMarks(studentId, studentName, assessorId = null) {
     const totalPercentage = marksData.weightedTotal;
     DOM.totalScoreSection.innerHTML = `
         <div class="total-score">
-            <div style="color: cyan; text-align: left; font-weight: bold; font-size: 28px; margin-bottom: 20px;">
-                🎯 Overall Performance Score
-            </div>
-            <div><span class="total-number">${totalPercentage.toFixed(1)}%</span></div>
+            <div class="total-number">${totalPercentage.toFixed(1)}%</div>
             <div class="progress-bar-container" style="margin-top: 12px; height: 20px;">
                 <div class="progress-fill" style="width: ${totalPercentage}%; background: linear-gradient(90deg, #ffb347, #ff6b6b);"></div>
             </div>
@@ -365,7 +412,6 @@ function displayStudentMarks(studentId, studentName, assessorId = null) {
     `;
 
     DOM.marksPanel.style.display = 'block';
-    DOM.marksPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ==================================
@@ -446,7 +492,7 @@ function displayExistingEvaluation(evaluation) {
 
     DOM.remarksSection.innerHTML = `
         <div class="remarks-box">
-            <div class="remarks-title"><ion-icon name="chatbubble-outline"></ion-icon> Assessor's Remarks & Feedback</div>
+            <div class="remarks-title">Assessor's Remarks & Feedback</div>
             <div class="remarks-text">${escapeHtml(evaluation.remarks)}</div>
             <div style="margin-top: 12px; font-size: 12px; color: #88aaff;">
                 📅 Evaluated on: ${formatDate(evaluation.evaluatedAt)}
@@ -456,10 +502,7 @@ function displayExistingEvaluation(evaluation) {
 
     DOM.totalScoreSection.innerHTML = `
         <div class="total-score">
-            <div style="color: cyan; text-align: left; font-weight: bold; font-size: 28px; margin-bottom: 20px;">
-                🎯 Overall Performance Score
-            </div>
-            <div><span class="total-number">${evaluation.weightedTotal.toFixed(1)}%</span></div>
+            <div class="total-number">${evaluation.weightedTotal.toFixed(1)}%</div>
             <div class="progress-bar-container" style="margin-top: 12px; height: 20px;">
                 <div class="progress-fill" style="width: ${evaluation.weightedTotal}%; background: linear-gradient(90deg, #ffb347, #ff6b6b);"></div>
             </div>
@@ -484,11 +527,11 @@ function handleStudentSelection() {
 
     if (existingEvaluation && !State.isEditMode) {
         DOM.evaluationForm.style.display = 'none';
-        displayExistingEvaluation(existingEvaluation, State.currentStudent);
+        displayExistingEvaluation(existingEvaluation);
     } else {
         DOM.marksPanel.style.display = 'none';
         DOM.evaluationForm.style.display = 'block';
-        renderEvaluationForm(State.currentStudent, State.isEditMode ? existingEvaluation : null);
+        renderEvaluationForm(State.isEditMode ? existingEvaluation : null);
     }
 }
 
@@ -498,7 +541,6 @@ function submitEvaluation() {
         return;
     }
 
-    // Validate all scores
     for (const criterion of EVALUATION_CRITERIA) {
         const scoreInput = document.getElementById(`score_${criterion.key}`);
         if (scoreInput) {
@@ -535,7 +577,7 @@ function editEvaluation() {
     if (existingEvaluation) {
         DOM.marksPanel.style.display = 'none';
         DOM.evaluationForm.style.display = 'block';
-        renderEvaluationForm(State.currentStudent, existingEvaluation);
+        renderEvaluationForm(existingEvaluation);
     }
 }
 
@@ -546,7 +588,6 @@ function setupUIForRole() {
     const isAdmin = State.userRole === 'administrator';
     const isAssessor = State.userRole === 'assessor';
 
-    // Hide all sections first
     DOM.assessorSelector.style.display = 'none';
     DOM.studentSelector.style.display = 'none';
     DOM.studentsSection.style.display = 'none';
@@ -576,24 +617,8 @@ function setupUIForRole() {
 }
 
 // ------------------------------
-// 11. Login & Session Management
+// Login & Session Management
 // ------------------------------
-function loadAccountsForLogin() {
-    const savedData = localStorage.getItem(STORAGE_KEYS.EVAL_DATA);
-    if (savedData) {
-        try {
-            const parsed = JSON.parse(savedData);
-            if (parsed.accountList) {
-                State.accountList = parsed.accountList;
-                return true;
-            }
-        } catch (error) {
-            console.error('Error loading accounts:', error);
-        }
-    }
-    return false;
-}
-
 function saveLoginState(user) {
     sessionStorage.setItem('loggedInUser', JSON.stringify(user));
 }
@@ -612,7 +637,7 @@ function showEvaluationPage() {
     if (DOM.accessDeniedMessage) DOM.accessDeniedMessage.style.display = 'none';
 }
 
-function checkExistingLogin() {
+async function checkExistingLogin() {
     const loggedInUser = sessionStorage.getItem('loggedInUser');
     if (!loggedInUser) {
         showAccessDenied();
@@ -624,13 +649,15 @@ function checkExistingLogin() {
         State.currentUser = user;
         State.userRole = user.userRole.toLowerCase();
 
-        // Update UI
         DOM.usernameDisplay.textContent = user.username;
         DOM.userRoleDisplay.textContent = user.userRole;
         DOM.userInfo.style.display = 'flex';
         DOM.loginBtn.textContent = 'LOGOUT';
         DOM.loginBtn.classList.add('logout-state');
         if (DOM.wrapper) DOM.wrapper.classList.remove('active-popup');
+
+        await loadDataFromAPI();
+        loadEvaluationsFromStorage();
 
         if (State.userRole === 'administrator') {
             showEvaluationPage();
@@ -642,7 +669,7 @@ function checkExistingLogin() {
                 showEvaluationPage();
                 setupUIForRole();
                 handlePendingEvaluationRedirect(assessor);
-                handleViewModeRedirect(assessor);
+                handleViewModeRedirect();
             } else {
                 showAccessDenied();
             }
@@ -668,7 +695,7 @@ function handlePendingEvaluationRedirect(assessor) {
                 State.isEditMode = !!existingEvaluation;
                 DOM.evaluationForm.style.display = 'block';
                 DOM.marksPanel.style.display = 'none';
-                renderEvaluationForm(State.currentStudent, existingEvaluation);
+                renderEvaluationForm(existingEvaluation);
             }, 100);
         }
         sessionStorage.removeItem('evalStudentId');
@@ -682,20 +709,17 @@ function handleViewModeRedirect() {
     const viewAssessorId = sessionStorage.getItem('viewAssessorId');
 
     if (viewMode === 'true' && viewStudentId && viewAssessorId) {
-        loadDataFromLocalStorage();
-        loadEvaluationsFromStorage();
-
         const student = State.studentList.find(s => s.id === viewStudentId);
         const evaluation = getStudentEvaluation(viewStudentId, viewAssessorId);
 
         if (student && evaluation) {
-            DOM.studentDropdown.value = viewStudentId;
-            showEvaluationPage();
-            DOM.evaluationForm.style.display = 'none';
-            displayExistingEvaluation(evaluation, student);
-            DOM.editActionContainer.style.display = 'none';
-        } else {
-            showAccessDenied();
+            setTimeout(() => {
+                DOM.studentDropdown.value = viewStudentId;
+                showEvaluationPage();
+                DOM.evaluationForm.style.display = 'none';
+                displayExistingEvaluation(evaluation);
+                DOM.editActionContainer.style.display = 'none';
+            }, 100);
         }
 
         sessionStorage.removeItem('viewMode');
@@ -712,36 +736,36 @@ function handleViewModeRedirect() {
 function setupLoginForm() {
     if (!DOM.loginForm) return;
 
-    DOM.loginForm.addEventListener('submit', (e) => {
+    DOM.loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = DOM.loginEmail?.value.trim() || '';
         const password = DOM.loginPassword?.value.trim() || '';
 
-        loadAccountsForLogin();
-        const matchedAccount = State.accountList.find(acc => acc.email === email && acc.password === password);
+        const result = await API.login(email, password);
 
-        if (matchedAccount) {
+        if (result.success) {
             if (DOM.wrapper) DOM.wrapper.classList.remove('active-popup');
 
-            DOM.usernameDisplay.textContent = matchedAccount.username;
-            DOM.userRoleDisplay.textContent = matchedAccount.userRole;
+            DOM.usernameDisplay.textContent = result.user.username;
+            DOM.userRoleDisplay.textContent = result.user.userRole;
             DOM.userInfo.style.display = 'flex';
             DOM.loginBtn.textContent = 'LOGOUT';
             DOM.loginBtn.classList.add('logout-state');
 
             saveLoginState({
-                username: matchedAccount.username,
-                email: matchedAccount.email,
-                userRole: matchedAccount.userRole
+                username: result.user.username,
+                email: result.user.email,
+                userRole: result.user.userRole,
+                userId: result.user.user_id
             });
 
-            alert(`Logged in successfully as ${matchedAccount.username} (${matchedAccount.userRole})`);
-            checkExistingLogin();
+            alert(`Logged in successfully as ${result.user.username} (${result.user.userRole})`);
+            await checkExistingLogin();
 
             if (DOM.loginEmail) DOM.loginEmail.value = '';
             if (DOM.loginPassword) DOM.loginPassword.value = '';
         } else {
-            alert('Invalid email or password. Please try again.');
+            alert(result.message || 'Invalid email or password. Please try again.');
         }
     });
 }
@@ -756,7 +780,7 @@ function setupLoginButton() {
             DOM.loginBtn.classList.remove('logout-state');
             if (DOM.wrapper) DOM.wrapper.classList.remove('active-popup');
             clearLoginState();
-            checkExistingLogin();
+            showAccessDenied();
             alert('Logged out successfully');
         } else {
             if (DOM.wrapper) DOM.wrapper.classList.add('active-popup');
@@ -779,21 +803,13 @@ function setupClosePopup() {
 // ==============================
 function setupStorageListener() {
     window.addEventListener('storage', (e) => {
-        if (e.key === STORAGE_KEYS.EVAL_DATA) {
-            loadDataFromLocalStorage();
-            if (State.userRole === 'administrator') {
-                renderAssessorDropdown();
-            } else if (State.userRole === 'assessor' && State.currentAssessor) {
-                renderStudentDropdown();
-            }
-        }
         if (e.key === STORAGE_KEYS.EVALUATIONS) {
             loadEvaluationsFromStorage();
             if (State.userRole === 'assessor' && State.currentStudent) {
                 const existingEvaluation = getStudentEvaluation(State.currentStudent.id, State.currentAssessor.id);
                 if (existingEvaluation && !State.isEditMode) {
                     DOM.evaluationForm.style.display = 'none';
-                    displayExistingEvaluation(existingEvaluation, State.currentStudent);
+                    displayExistingEvaluation(existingEvaluation);
                 }
             }
         }
@@ -803,14 +819,12 @@ function setupStorageListener() {
 // ==============================
 // Initialization
 // ==============================
-function init() {
-    loadDataFromLocalStorage();
-    loadEvaluationsFromStorage();
+async function init() {
     setupLoginForm();
     setupLoginButton();
     setupClosePopup();
     setupStorageListener();
-    checkExistingLogin();
+    await checkExistingLogin();
 }
 
 init();

@@ -371,8 +371,17 @@
 .no-evaluation-message {
     text-align: center;
     padding: 40px;
+    color: #ff9800;
     background: rgba(0, 0, 0, 0.5);
     border-radius: 16px;
+}
+
+.no-evaluation-message h3 {
+    margin-top: 10px;
+}
+
+.no-evaluation-message p {
+    margin-top: 10px;
 }
 
 /* Responsive */

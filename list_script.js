@@ -8,36 +8,14 @@ let currentUser = null;
 let currentRole = null;
 let selectedItem = { type: null, id: null, data: null };
 let studentProgressNotes = {};
+let actualPasswords = {};
 
 // ============================================
-// STORAGE HELPERS
+// STORAGE HELPERS (for notes only)
 // ============================================
 const STORAGE_KEYS = {
-    DATA: 'internshipEvalData',
     NOTES: 'studentProgressNotes'
 };
-
-function loadGlobalData() {
-    const saved = localStorage.getItem(STORAGE_KEYS.DATA);
-    if (saved) {
-        try {
-            const data = JSON.parse(saved);
-            accountsList = data.accountList || [];
-            studentsList = data.studentList || [];
-            assessorsList = data.assessorList || [];
-            return true;
-        } catch (e) { console.error(e); }
-    }
-    return false;
-}
-
-function saveGlobalData() {
-    localStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify({
-        accountList: accountsList,
-        studentList: studentsList,
-        assessorList: assessorsList
-    }));
-}
 
 function loadNotes() {
     const saved = localStorage.getItem(STORAGE_KEYS.NOTES);
@@ -48,6 +26,104 @@ function loadNotes() {
 
 function saveNotes() {
     localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(studentProgressNotes));
+}
+
+// ============================================
+// API DATA LOADING
+// ============================================
+async function loadDataFromAPI() {
+    try {
+        console.log('Loading data from API for list page...');
+
+        const [students, assessors, users] = await Promise.all([
+            API.getStudents(),
+            API.getAssessors(),
+            API.getUsers()
+        ]);
+
+        console.log('Students received:', students);
+        console.log('Assessors received:', assessors);
+        console.log('Users received:', users);
+
+        // Ensure we have arrays
+        const studentsArray = Array.isArray(students) ? students : [];
+        const assessorsArray = Array.isArray(assessors) ? assessors : [];
+        const usersArray = Array.isArray(users) ? users : [];
+
+        // Transform students data
+        studentsList = studentsArray.map(s => ({
+            id: s.student_id?.toString() || '',
+            name: s.name || '',
+            programme: s.programme || '',
+            company: s.company_name || '',
+            year: s.enrollment_year?.toString() || '',
+            email: s.student_email || '',
+            contact: s.student_contact?.toString() || '',
+            status: s.status || s.internship_status || 'Pending',
+            assigned_assessor: s.assessor_name || '',
+            internshipPeriod: formatDateRange(s.start_date, s.end_date),
+            student_id: s.student_id,
+            start_date: s.start_date,
+            end_date: s.end_date,
+            assigned_assessor_id: s.assigned_assessor
+        }));
+
+        // Transform assessors data
+        assessorsList = assessorsArray.map(a => ({
+            id: a.assessor_id?.toString() || '',
+            name: a.username || '',
+            role: a.role || 'Assessor',
+            dept: a.department || '',
+            email: a.email || '',
+            contact: a.contact || '',
+            assignedStudentIds: Array.isArray(a.assigned_student_ids) ? a.assigned_student_ids.map(id => id.toString()) : [],
+            assessor_id: a.assessor_id,
+            user_id: a.user_id
+        }));
+
+        // Transform users/accounts data
+        accountsList = usersArray.map(u => {
+            let displayPassword = actualPasswords[u.user_id];
+            if (!displayPassword) {
+                displayPassword = generateDisplayPassword(u.username, u.user_id);
+                actualPasswords[u.user_id] = displayPassword;
+            }
+
+            return {
+                username: u.username || '',
+                email: u.email || '',
+                password: displayPassword,
+                userRole: u.role || '',
+                contact: u.contact || '',
+                createdAt: u.date_created ? new Date(u.date_created).toLocaleDateString('en-GB') : '',
+                user_id: u.user_id
+            };
+        });
+        saveStoredPasswords();
+
+        console.log('Transformed studentsList:', studentsList.length);
+        console.log('Transformed assessorsList:', assessorsList.length);
+        console.log('Transformed accountsList:', accountsList.length);
+
+        return true;
+    } catch (error) {
+        console.error('Error loading data:', error);
+        studentsList = [];
+        assessorsList = [];
+        accountsList = [];
+        return false;
+    }
+}
+
+function loadStoredPasswords() {
+    const stored = localStorage.getItem('accountPasswords');
+    if (stored) {
+        try { actualPasswords = JSON.parse(stored); } catch (e) { }
+    }
+}
+
+function saveStoredPasswords() {
+    localStorage.setItem('accountPasswords', JSON.stringify(actualPasswords));
 }
 
 // ============================================
@@ -97,30 +173,8 @@ function setTableHeight(tableId) {
     }
 
     const totalHeight = headerHeight + rowsHeight + 2;
-
     container.style.height = `${totalHeight}px`;
     container.style.overflowY = 'auto';
-}
-
-function setAllTableHeights() {
-    const tableContainers = ['studentsScrollableTable', 'accountsScrollableTable', 'assessorsScrollableTable', 'assignedStudentsScrollableTable']
-        .map(id => {
-            if (id === 'studentsScrollableTable') return document.getElementById(id);
-            if (id === 'accountsScrollableTable') return document.getElementById(id);
-            if (id === 'assessorsScrollableTable') return document.getElementById(id);
-            if (id === 'accountScrollableTable') return document.getElementById(id);
-            const el = document.getElementById(id);
-            return el?.closest('.scrollable-table');
-        })
-        .filter(Boolean);
-
-    tableContainers.forEach(container => {
-        if (container.id) setTableHeight(container.id);
-        else if (container) {
-            if (!container.id) container.id = 'temp_' + Date.now();
-            setTableHeight(container.id);
-        }
-    });
 }
 
 // ============================================
@@ -292,8 +346,6 @@ function showDetails(type, id, extraAssessorId = null) {
     selectedItem = { type, id, data, assessorId: extraAssessorId };
 
     const panel = document.getElementById('detailsPanel');
-    const titleEl = document.getElementById('detailsTitle');
-    const contentDiv = document.getElementById('detailsContent');
     const notesSection = document.getElementById('progressNotesSection');
 
     notesSection.style.display = 'none';
@@ -321,10 +373,34 @@ function renderStudentDetails(data, extraAssessorId) {
                 <h2>${escapeHtml(data.name)}</h2>
                 <div class="resume-title">ID: ${escapeHtml(data.id)}</div>
             </div>
-            ${renderContactSection(data)}
-            ${renderInternshipSection(data)}
-            ${renderAcademicSection(data)}
-            ${renderStatusSection(statusIcon, data)}
+            <div class="resume-section">
+                <div class="resume-section-title"><ion-icon name="call-outline"></ion-icon> Contact Information</div>
+                <div class="resume-grid">
+                    <div class="resume-field"><div class="resume-field-label">Email Address</div><div class="resume-field-value">${escapeHtml(data.email || '—')}</div></div>
+                    <div class="resume-field"><div class="resume-field-label">Phone Number</div><div class="resume-field-value">${escapeHtml(data.contact || '—')}</div></div>
+                </div>
+            </div>
+            <div class="resume-section">
+                <div class="resume-section-title"><ion-icon name="business-outline"></ion-icon> Internship Details</div>
+                <div class="resume-grid">
+                    <div class="resume-field"><div class="resume-field-label">Host Company</div><div class="resume-field-value">${escapeHtml(data.company || '—')}</div></div>
+                    <div class="resume-field"><div class="resume-field-label">Internship Period</div><div class="resume-field-value">${escapeHtml(data.internshipPeriod || 'Not specified')}</div></div>
+                    <div class="resume-field"><div class="resume-field-label">Assigned Assessor</div><div class="resume-field-value">${escapeHtml(data.assigned_assessor || 'Not assigned')}</div></div>
+                </div>
+            </div>
+            <div class="resume-section">
+                <div class="resume-section-title"><ion-icon name="school-outline"></ion-icon> Academic Info</div>
+                <div class="resume-grid">
+                    <div class="resume-field"><div class="resume-field-label">Enrolment Year</div><div class="resume-field-value">${escapeHtml(data.year || '—')}</div></div>
+                    <div class="resume-field"><div class="resume-field-label">Academic Programme</div><div class="resume-field-value">${escapeHtml(data.programme || '—')}</div></div>
+                </div>
+            </div>
+            <div class="resume-section">
+                <div class="resume-section-title"><ion-icon name="clipboard-outline"></ion-icon> Evaluation Status</div>
+                <div class="resume-grid">
+                    <div class="resume-field"><div class="resume-field-label">Current Status</div><div class="resume-field-value"><span class="resume-badge">${statusIcon} ${escapeHtml(data.status || 'Pending')}</span></div></div>
+                </div>
+            </div>
         </div>
     `;
 
@@ -334,54 +410,6 @@ function renderStudentDetails(data, extraAssessorId) {
             setupProgressNotes(data.id, currentAssessor.id);
         }
     }
-}
-
-function renderContactSection(data) {
-    return `
-        <div class="resume-section">
-            <div class="resume-section-title"><ion-icon name="call-outline"></ion-icon> Contact Information</div>
-            <div class="resume-grid">
-                <div class="resume-field"><div class="resume-field-label">Email Address</div><div class="resume-field-value">${escapeHtml(data.email || '—')}</div></div>
-                <div class="resume-field"><div class="resume-field-label">Phone Number</div><div class="resume-field-value">${escapeHtml(data.contact || '—')}</div></div>
-            </div>
-        </div>
-    `;
-}
-
-function renderInternshipSection(data) {
-    return `
-        <div class="resume-section">
-            <div class="resume-section-title"><ion-icon name="business-outline"></ion-icon> Internship Details</div>
-            <div class="resume-grid">
-                <div class="resume-field"><div class="resume-field-label">Host Company</div><div class="resume-field-value">${escapeHtml(data.company || '—')}</div></div>
-                <div class="resume-field"><div class="resume-field-label">Internship Period</div><div class="resume-field-value">${escapeHtml(data.internshipPeriod || 'Not specified')}</div></div>
-                <div class="resume-field"><div class="resume-field-label">Assigned Assessor</div><div class="resume-field-value">${escapeHtml(data.assigned_assessor || 'Not assigned')}</div></div>
-            </div>
-        </div>
-    `;
-}
-
-function renderAcademicSection(data) {
-    return `
-        <div class="resume-section">
-            <div class="resume-section-title"><ion-icon name="school-outline"></ion-icon> Academic Info</div>
-            <div class="resume-grid">
-                <div class="resume-field"><div class="resume-field-label">Enrolment Year</div><div class="resume-field-value">${escapeHtml(data.year || '—')}</div></div>
-                <div class="resume-field"><div class="resume-field-label">Academic Programme</div><div class="resume-field-value">${escapeHtml(data.programme || '—')}</div></div>
-            </div>
-        </div>
-    `;
-}
-
-function renderStatusSection(statusIcon, data) {
-    return `
-        <div class="resume-section">
-            <div class="resume-section-title"><ion-icon name="clipboard-outline"></ion-icon> Evaluation Status</div>
-            <div class="resume-grid">
-                <div class="resume-field"><div class="resume-field-label">Current Status</div><div class="resume-field-value"><span class="resume-badge">${statusIcon} ${escapeHtml(data.status || 'Pending')}</span></div></div>
-            </div>
-        </div>
-    `;
 }
 
 function setupProgressNotes(studentId, assessorId) {
@@ -492,7 +520,7 @@ function setupRowDelegation() {
 // ============================================
 // AUTHENTICATION
 // ============================================
-function checkLoginState() {
+async function checkLoginState() {
     const logged = sessionStorage.getItem('loggedInUser');
     if (!logged) {
         showAccessDenied();
@@ -506,6 +534,12 @@ function checkLoginState() {
 
         updateUIForLoggedInUser(user);
 
+        // Make sure data is loaded
+        if (studentsList.length === 0 && accountsList.length === 0) {
+            console.log('Loading data for logged in user...');
+            await loadDataFromAPI();
+        }
+
         if (currentRole === 'administrator') {
             showAdminView();
         } else if (currentRole === 'assessor') {
@@ -517,6 +551,7 @@ function checkLoginState() {
         setupRowDelegation();
         return true;
     } catch (e) {
+        console.error('Login check error:', e);
         showAccessDenied();
         return false;
     }
@@ -576,24 +611,39 @@ function logout() {
 
 function setupLogin() {
     const form = document.getElementById('listLoginForm');
-    if (!form) return;
+    if (!form) {
+        console.error('Login form not found!');
+        return;
+    }
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = document.getElementById('loginEmail').value.trim();
-        const pwd = document.getElementById('loginPassword').value.trim();
-        const matched = accountsList.find(acc => acc.email === email && acc.password === pwd);
+        const password = document.getElementById('loginPassword').value.trim();
 
-        if (matched) {
+        // Use API.login() instead of localStorage comparison
+        const result = await API.login(email, password);
+
+        if (result.success) {
+            console.log('Login successful:', result.user);
             document.getElementById('loginPopup').classList.remove('active-popup');
+
             sessionStorage.setItem('loggedInUser', JSON.stringify({
-                username: matched.username, email: matched.email, userRole: matched.userRole
+                username: result.user.username,
+                email: result.user.email,
+                userRole: result.user.userRole,
+                userId: result.user.user_id
             }));
-            alert(`Logged in as ${matched.username}`);
+
+            alert(`Logged in as ${result.user.username}`);
+
+            // Reload data after login
+            await loadDataFromAPI();
             checkLoginState();
             form.reset();
         } else {
-            alert('Invalid email or password');
+            console.error('Login failed:', result.message);
+            alert(result.message || 'Invalid email or password');
         }
     });
 }
@@ -682,7 +732,11 @@ function generateAccountEditForm(account) {
     return `
         <div class="edit-field"><label>Username</label><input type="text" id="edit_username" value="${escapeHtml(account.username)}"></div>
         <div class="edit-field"><label>Email</label><input type="email" id="edit_email" value="${escapeHtml(account.email)}"></div>
-        <div class="edit-field"><label>Password</label><input type="text" id="edit_password" value="${escapeHtml(account.password)}"></div>
+        <div class="edit-field">
+            <label>Password</label>
+            <input type="text" id="edit_password" value="" placeholder="New password">
+            <small style="display:block; color:#aaa; margin-top:5px;">Current password: ${escapeHtml(account.password)}</small>
+        </div>
         <div class="edit-field"><label>User Role</label>
             <select id="edit_role">
                 <option value="Administrator" ${account.userRole === 'Administrator' ? 'selected' : ''}>Administrator</option>
@@ -698,17 +752,11 @@ function generateStudentEditForm(student) {
     const statusOptions = ['Pending', 'Ongoing', 'Evaluated'];
 
     let startDate = '', endDate = '';
-    if (student.internshipPeriod) {
-        const parts = student.internshipPeriod.split(' to ');
-        if (parts.length === 2) {
-            const [startParts, endParts] = [parts[0].split('/'), parts[1].split('/')];
-            if (startParts.length === 3) startDate = `${startParts[2]}-${startParts[1]}-${startParts[0]}`;
-            if (endParts.length === 3) endDate = `${endParts[2]}-${endParts[1]}-${endParts[0]}`;
-        }
-    }
+    if (student.start_date) startDate = student.start_date;
+    if (student.end_date) endDate = student.end_date;
 
     return `
-        <div class="edit-field"><label>Student ID</label><input type="text" id="edit_student_id" value="${escapeHtml(student.id)}" ${student.id ? 'readonly' : ''}></div>
+        <div class="edit-field"><label>Student ID</label><input type="text" id="edit_student_id" value="${escapeHtml(student.id)}" readonly></div>
         <div class="edit-field"><label>Student Name</label><input type="text" id="edit_student_name" value="${escapeHtml(student.name)}"></div>
         <div class="edit-field"><label>Programme</label><input type="text" id="edit_programme" value="${escapeHtml(student.programme || '')}"></div>
         <div class="edit-field"><label>Internship Company</label><input type="text" id="edit_company" value="${escapeHtml(student.company || '')}"></div>
@@ -735,14 +783,14 @@ function generateAssessorEditForm(assessor) {
         <div class="edit-field"><label>Department</label><input type="text" id="edit_assessor_dept" value="${escapeHtml(assessor.dept || '')}"></div>
         <div class="edit-field"><label>Email</label><input type="email" id="edit_assessor_email" value="${escapeHtml(assessor.email)}"></div>
         <div class="edit-field"><label>Contact Number</label><input type="text" id="edit_assessor_contact" value="${escapeHtml(assessor.contact || '')}"></div>
-        <div class="edit-field"><label>Assigned Student IDs (comma separated)</label><input type="text" id="edit_assigned_students" value="${escapeHtml(studentIdsString)}" placeholder="S1001, S1002, S1003"></div>
+        <div class="edit-field"><label>Assigned Student IDs (comma separated)</label><input type="text" id="edit_assigned_students" value="${escapeHtml(studentIdsString)}" placeholder="1001, 1002, 1003"></div>
     `;
 }
 
-function saveEdit() {
-    if (currentEditType === 'account') updateAccountFromModal();
-    else if (currentEditType === 'student') updateStudentFromModal();
-    else if (currentEditType === 'assessor') updateAssessorFromModal();
+async function saveEdit() {
+    if (currentEditType === 'account') await updateAccountFromModal();
+    else if (currentEditType === 'student') await updateStudentFromModal();
+    else if (currentEditType === 'assessor') await updateAssessorFromModal();
 
     document.getElementById('editModal').style.display = 'none';
 
@@ -760,138 +808,108 @@ function saveEdit() {
     alert('Changes saved successfully!');
 }
 
-function updateAccountFromModal() {
-    const index = accountsList.findIndex(a => a.email === currentEditId);
-    if (index === -1) return;
+async function updateAccountFromModal() {
+    const account = accountsList.find(a => a.email === currentEditId);
+    if (!account) return;
 
-    const newRole = document.getElementById('edit_role').value;
-    const oldRole = accountsList[index].userRole;
+    const newPassword = document.getElementById('edit_password')?.value || '';
 
-    accountsList[index] = {
-        ...accountsList[index],
+    const updatedAccount = {
+        user_id: account.user_id,
         username: document.getElementById('edit_username').value,
         email: document.getElementById('edit_email').value,
-        password: document.getElementById('edit_password').value,
-        userRole: newRole,
+        userRole: document.getElementById('edit_role').value,
         contact: document.getElementById('edit_contact').value
     };
 
-    // Handle assessor list updates
-    if (oldRole === 'Assessor' && newRole !== 'Assessor') {
-        const assessorIndex = assessorsList.findIndex(a => a.email === currentEditId);
-        if (assessorIndex !== -1) assessorsList.splice(assessorIndex, 1);
-    } else if (oldRole !== 'Assessor' && newRole === 'Assessor') {
-        if (!assessorsList.find(a => a.email === accountsList[index].email)) {
-            assessorsList.push({
-                id: `A${String(assessorsList.length + 1).padStart(3, '0')}`,
-                name: accountsList[index].username,
-                role: 'Assessor',
-                dept: '',
-                email: accountsList[index].email,
-                contact: accountsList[index].contact,
-                assignedStudentIds: []
-            });
-        }
-    } else if (oldRole === 'Assessor' && newRole === 'Assessor') {
-        const assessorIndex = assessorsList.findIndex(a => a.email === currentEditId);
-        if (assessorIndex !== -1) {
-            assessorsList[assessorIndex] = {
-                ...assessorsList[assessorIndex],
-                name: accountsList[index].username,
-                email: accountsList[index].email,
-                contact: accountsList[index].contact
-            };
-        }
+    let passwordChanged = false;
+    let newPlainPassword = null;
+
+    if (newPassword && newPassword.trim() !== '') {
+        updatedAccount.password = newPassword;
+        passwordChanged = true;
+        newPlainPassword = newPassword;
     }
 
-    saveGlobalData();
+    const result = await API.updateUser(updatedAccount);
+
+    if (result.success) {
+        if (passwordChanged && newPlainPassword) {
+            actualPasswords[account.user_id] = newPlainPassword;
+            saveStoredPasswords();
+            alert(`✅ Account updated successfully! New Password: ${newPlainPassword}`);
+        } else {
+            alert('✅ Account updated successfully!');
+        }
+
+        await loadDataFromAPI();
+
+        if (currentRole === 'administrator') {
+            renderAdminAccounts();
+            renderAdminStudents();
+            renderAdminAssessors();
+            populateFilterDropdowns();
+        } else if (currentRole === 'assessor') {
+            renderAssignedStudents();
+        }
+
+        document.getElementById('editModal').style.display = 'none';
+    } else {
+        alert('❌ Error updating account: ' + (result.error || 'Unknown error'));
+    }
 }
+async function updateStudentFromModal() {
+    const student = studentsList.find(s => s.id === currentEditId);
+    if (!student) return;
 
-function updateStudentFromModal() {
-    const index = studentsList.findIndex(s => s.id === currentEditId);
-    if (index === -1) return;
-
-    const startDate = document.getElementById('edit_start_date').value;
-    const endDate = document.getElementById('edit_end_date').value;
-    const internshipPeriod = formatDateRange(startDate, endDate);
-
-    const oldAssessorName = studentsList[index].assigned_assessor;
     const newAssessorName = document.getElementById('edit_assigned_assessor').value;
+    const selectedAssessor = assessorsList.find(a => a.name === newAssessorName);
+    const assessorId = selectedAssessor ? parseInt(selectedAssessor.id) : null;
 
-    // Update assessor assignments
-    if (oldAssessorName !== newAssessorName) {
-        if (oldAssessorName) {
-            const oldAssessor = assessorsList.find(a => a.name === oldAssessorName);
-            if (oldAssessor?.assignedStudentIds) {
-                const idx = oldAssessor.assignedStudentIds.indexOf(studentsList[index].id);
-                if (idx !== -1) oldAssessor.assignedStudentIds.splice(idx, 1);
-            }
-        }
-        if (newAssessorName) {
-            const newAssessor = assessorsList.find(a => a.name === newAssessorName);
-            if (newAssessor) {
-                if (!newAssessor.assignedStudentIds) newAssessor.assignedStudentIds = [];
-                if (!newAssessor.assignedStudentIds.includes(studentsList[index].id)) {
-                    newAssessor.assignedStudentIds.push(studentsList[index].id);
-                }
-            }
-        }
-    }
-
-    studentsList[index] = {
-        ...studentsList[index],
-        id: document.getElementById('edit_student_id').value,
+    const updatedStudent = {
+        student_id: parseInt(student.id),
         name: document.getElementById('edit_student_name').value,
         programme: document.getElementById('edit_programme').value,
-        company: document.getElementById('edit_company').value,
-        year: document.getElementById('edit_year').value,
-        email: document.getElementById('edit_student_email').value,
-        contact: document.getElementById('edit_student_contact').value,
-        internshipPeriod,
+        company_name: document.getElementById('edit_company').value,
+        enrollment_year: parseInt(document.getElementById('edit_year').value) || new Date().getFullYear(),
+        student_email: document.getElementById('edit_student_email').value,
+        student_contact: parseInt(document.getElementById('edit_student_contact').value) || 0,
+        assigned_assessor: assessorId,
         status: document.getElementById('edit_status').value,
-        assigned_assessor: newAssessorName
+        start_date: document.getElementById('edit_start_date').value || null,
+        end_date: document.getElementById('edit_end_date').value || null
     };
 
-    saveGlobalData();
+    const result = await API.updateStudent(updatedStudent);
+
+    if (result.success) {
+        await loadDataFromAPI();
+    } else {
+        alert('Error updating student: ' + (result.error || 'Unknown error'));
+    }
 }
 
-function updateAssessorFromModal() {
-    const index = assessorsList.findIndex(a => a.id === currentEditId);
-    if (index === -1) return;
+async function updateAssessorFromModal() {
+    const assessor = assessorsList.find(a => a.id === currentEditId);
+    if (!assessor) return;
 
-    const studentIdsInput = document.getElementById('edit_assigned_students').value;
-    const studentIdsArray = studentIdsInput ? studentIdsInput.split(',').map(id => id.trim()) : [];
-    const newAssessorName = document.getElementById('edit_assessor_name').value;
-    const oldAssessor = assessorsList[index];
-
-    // Update student assignments
-    if (oldAssessor.assignedStudentIds) {
-        oldAssessor.assignedStudentIds.forEach(oldStudentId => {
-            if (!studentIdsArray.includes(oldStudentId)) {
-                const student = studentsList.find(s => s.id === oldStudentId);
-                if (student && student.assigned_assessor === oldAssessor.name) {
-                    student.assigned_assessor = '';
-                }
-            }
-        });
-    }
-
-    studentIdsArray.forEach(studentId => {
-        const student = studentsList.find(s => s.id === studentId);
-        if (student) student.assigned_assessor = newAssessorName;
-    });
-
-    assessorsList[index] = {
-        ...assessorsList[index],
-        name: newAssessorName,
-        role: document.getElementById('edit_assessor_role').value,
-        dept: document.getElementById('edit_assessor_dept').value,
+    const updatedAssessor = {
+        user_id: assessor.user_id,
+        assessor_id: parseInt(assessor.id),
+        username: document.getElementById('edit_assessor_name').value,
         email: document.getElementById('edit_assessor_email').value,
         contact: document.getElementById('edit_assessor_contact').value,
-        assignedStudentIds: studentIdsArray
+        department: document.getElementById('edit_assessor_dept').value,
+        assessor_role: document.getElementById('edit_assessor_role').value
     };
 
-    saveGlobalData();
+    const result = await API.updateAssessor(updatedAssessor);
+
+    if (result.success) {
+        await loadDataFromAPI();
+    } else {
+        alert('Error updating assessor: ' + (result.error || 'Unknown error'));
+    }
 }
 
 function attachEditButtonListeners() {
@@ -906,66 +924,62 @@ function handleEditClick(e) {
     openEditModal(this.getAttribute('data-type'), this.getAttribute('data-id'));
 }
 
+function generateDisplayPassword(username, userId) {
+    if (!username) return 'user' + String(userId || '0').padStart(6, '0');
+    const firstWord = username.split(' ')[0];
+    const numbers = String(userId || Math.floor(Math.random() * 1000000)).padStart(6, '0').slice(-6);
+    return firstWord + numbers;
+}
+
 // ============================================
 // DELETE FUNCTIONS
 // ============================================
-function deleteAccount(email) {
+async function deleteAccount(email) {
     if (!confirm('Are you sure you want to delete this account?')) return;
 
-    const index = accountsList.findIndex(a => a.email === email);
-    if (index !== -1) {
-        if (accountsList[index].userRole === 'Assessor') {
-            const assessorIndex = assessorsList.findIndex(a => a.email === email);
-            if (assessorIndex !== -1) assessorsList.splice(assessorIndex, 1);
+    const account = accountsList.find(a => a.email === email);
+    if (account) {
+        const result = await API.deleteUser(account.user_id);
+        if (result.success) {
+            await loadDataFromAPI();
+            refreshAdminTables();
+            alert('Account deleted successfully!');
+        } else {
+            alert('Error deleting account: ' + (result.error || 'Unknown error'));
         }
-        accountsList.splice(index, 1);
-        saveGlobalData();
-        refreshAdminTables();
-        alert('Account deleted successfully!');
     }
 }
 
-function deleteStudent(studentId) {
+async function deleteStudent(studentId) {
     if (!confirm('Are you sure you want to delete this student?')) return;
 
-    const index = studentsList.findIndex(s => s.id === studentId);
-    if (index !== -1) {
-        const deletedStudent = studentsList[index];
-        if (deletedStudent.assigned_assessor) {
-            const assessor = assessorsList.find(a => a.name === deletedStudent.assigned_assessor);
-            if (assessor?.assignedStudentIds) {
-                const idx = assessor.assignedStudentIds.indexOf(studentId);
-                if (idx !== -1) assessor.assignedStudentIds.splice(idx, 1);
-            }
-        }
-        studentsList.splice(index, 1);
-        saveGlobalData();
+    const result = await API.deleteStudent(parseInt(studentId));
+    if (result.success) {
+        await loadDataFromAPI();
         refreshAdminTables();
         alert('Student deleted successfully!');
+    } else {
+        alert('Error deleting student: ' + (result.error || 'Unknown error'));
     }
 }
 
-function deleteAssessor(assessorId) {
+async function deleteAssessor(assessorId) {
     if (!confirm('Are you sure you want to delete this assessor?')) return;
 
-    const index = assessorsList.findIndex(a => a.id === assessorId);
-    if (index !== -1) {
-        const deletedAssessor = assessorsList[index];
-        studentsList.forEach(student => {
-            if (student.assigned_assessor === deletedAssessor.name) {
-                student.assigned_assessor = '';
-            }
-        });
-        assessorsList.splice(index, 1);
-        saveGlobalData();
+    const result = await API.deleteAssessor(parseInt(assessorId));
+    if (result.success) {
+        await loadDataFromAPI();
         refreshAdminTables();
         alert('Assessor deleted successfully!');
+    } else {
+        alert('Error deleting assessor: ' + (result.error || 'Unknown error'));
     }
 }
 
 function refreshAdminTables() {
     renderAdminStudents();
     renderAdminAssessors();
+    renderAdminAccounts();
     attachEditButtonListeners();
     attachDeleteButtonListeners();
 }
@@ -1035,34 +1049,29 @@ function observeTableHeightChanges() {
 }
 
 // ============================================
-// STORAGE SYNC
-// ============================================
-window.addEventListener('storage', (e) => {
-    if (e.key === STORAGE_KEYS.DATA) {
-        loadGlobalData();
-        if (currentRole === 'administrator') {
-            renderAdminAccounts();
-            renderAdminStudents();
-            renderAdminAssessors();
-        } else if (currentRole === 'assessor') {
-            renderAssignedStudents();
-        }
-    }
-    if (e.key === STORAGE_KEYS.NOTES) loadNotes();
-});
-
-// ============================================
 // INITIALIZATION
 // ============================================
-function init() {
-    loadGlobalData();
+async function init() {
+    console.log('=== LIST PAGE INITIALIZING ===');
+
+    // First load data from API
+    await loadDataFromAPI();
+    console.log('Data loaded, students:', studentsList.length);
+
+    // Load notes from localStorage
     loadNotes();
+
+    // Setup event listeners
     setupLogin();
     setupEditModalEvents();
     initUI();
-    checkLoginState();
+
+    // Check login state (data is already loaded)
+    await checkLoginState();
+
+    // Set table heights after render
     setTimeout(() => observeTableHeightChanges(), 100);
 }
 
+// Make sure to call init
 init();
-

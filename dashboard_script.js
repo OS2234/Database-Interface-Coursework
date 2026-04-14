@@ -22,11 +22,7 @@ let accountList = [];
 let studentList = [];
 let assessorList = [];
 let assessorEvaluations = {};
-
-let sessionAddedAccounts = [];
-let sessionAddedStudents = [];
-let sessionAddedAssessors = [];
-let currentSessionId = null;
+let actualPasswords = {};
 
 // ============================================
 // GENERAL FUNCTIONS
@@ -42,55 +38,143 @@ function escapeHtml(str) {
     });
 }
 
-// ============================================
-// SESSION MANAGEMENT
-// ============================================
+function formatDateForDisplay(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB');
+}
 
-function getCurrentSessionId() {
-    let sessionId = sessionStorage.getItem('dashboardSessionId');
-    if (!sessionId) {
-        sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        sessionStorage.setItem('dashboardSessionId', sessionId);
+function formatDateRangeForDisplay(startDate, endDate) {
+    if (!startDate && !endDate) return '—';
+    if (startDate && endDate) {
+        return `${formatDateForDisplay(startDate)} to ${formatDateForDisplay(endDate)}`;
     }
-    return sessionId;
-}
-
-function isAddedInCurrentSession(item) {
-    if (!item.createdAtSession) return false;
-    return item.createdAtSession === currentSessionId;
-}
-
-function getSessionFilteredAccounts() {
-    return accountList.filter(acc => isAddedInCurrentSession(acc, 'account'));
-}
-
-function getSessionFilteredStudents() {
-    return studentList.filter(student => isAddedInCurrentSession(student, 'student'));
-}
-
-function getSessionFilteredAssessors() {
-    return assessorList.filter(assessor => isAddedInCurrentSession(assessor, 'assessor'));
+    if (startDate) return `${formatDateForDisplay(startDate)} onwards`;
+    return `Until ${formatDateForDisplay(endDate)}`;
 }
 
 // ============================================
-// DEMO DATA
+// API DATA LOADING
 // ============================================
-const DEMO_DATA = {
-    accounts: [
-        { username: 'John', email: 'admin123@gmail.com', password: '123456', userRole: 'Administrator', contact: '011 672 9343', createdAt: '31/12/2025' },
-        { username: 'Jane Smith', email: 'jane.smith@nottingham.edu', password: 'jane123', userRole: 'Assessor', contact: '987-654-3210', createdAt: '01/01/2025' },
-        { username: 'Alan Grant', email: 'a.grant@nottingham.edu', password: 'alan123', userRole: 'Assessor', contact: '456-123-7890', createdAt: '01/01/2025' }
-    ],
-    students: [
-        { id: 'S1001', name: 'Emma Watson', programme: 'Computer Science', company: 'Innovate Tech', year: '2023', email: 'emma.w@student.com', contact: '111-222-3333', status: 'Pending', assigned_assessor: 'Jane Smith', internshipPeriod: '' },
-        { id: 'S1002', name: 'James Brown', programme: 'Engineering', company: 'BuildCorp', year: '2022', email: 'j.brown@student.com', contact: '444-555-6666', status: 'Pending', assigned_assessor: 'Jane Smith', internshipPeriod: '' },
-        { id: 'S1003', name: 'Luis Chen', programme: 'Business', company: 'FinGroup', year: '2024', email: 'l.chen@student.com', contact: '777-888-9999', status: 'Pending', assigned_assessor: 'Alan Grant', internshipPeriod: '' }
-    ],
-    assessors: [
-        { id: 'A001', name: 'Jane Smith', role: 'Senior Assessor', dept: 'Computer Science', email: 'jane.smith@nottingham.edu', contact: '987-654-3210', assignedStudentIds: ['S1001', 'S1002'] },
-        { id: 'A002', name: 'Alan Grant', role: 'Assessor', dept: 'Engineering', email: 'a.grant@nottingham.edu', contact: '456-123-7890', assignedStudentIds: ['S1003'] }
-    ]
-};
+
+async function loadDataFromAPI() {
+    try {
+        console.log('Loading data from API...');
+
+        const [students, assessors, users] = await Promise.all([
+            API.getStudents(),
+            API.getAssessors(),
+            API.getUsers()
+        ]);
+
+        console.log('Students received:', students);
+        console.log('Assessors received:', assessors);
+        console.log('Users received:', users);
+
+        // Ensure we have arrays
+        const studentsArray = Array.isArray(students) ? students : [];
+        const assessorsArray = Array.isArray(assessors) ? assessors : [];
+        const usersArray = Array.isArray(users) ? users : [];
+
+        // Transform students data
+        studentList = studentsArray.map(s => ({
+            id: s.student_id?.toString() || '',
+            name: s.name || '',
+            programme: s.programme || '',
+            company: s.company_name || '',
+            year: s.enrollment_year?.toString() || '',
+            email: s.student_email || '',
+            contact: s.student_contact?.toString() || '',
+            status: s.status || s.internship_status || 'Pending',
+            assigned_assessor: s.assessor_name || '',
+            internshipPeriod: formatDateRangeForDisplay(s.start_date, s.end_date),
+            student_id: s.student_id,
+            start_date: s.start_date,
+            end_date: s.end_date,
+            assigned_assessor_id: s.assigned_assessor
+        }));
+
+        // Transform assessors data
+        assessorList = assessorsArray.map(a => ({
+            id: a.assessor_id?.toString() || '',
+            name: a.username || '',
+            role: a.assessor_role || 'Assessor',
+            dept: a.department || '',
+            email: a.email || '',
+            contact: a.contact || '',
+            assignedStudentIds: Array.isArray(a.assigned_student_ids) ? a.assigned_student_ids.map(id => id.toString()) : [],
+            assessor_id: a.assessor_id,
+            user_id: a.user_id
+        }));
+
+        // Transform users/accounts data
+        accountList = usersArray.map(u => {
+            const userId = u.user_id;
+            let displayPassword = actualPasswords[userId];
+            if (!displayPassword) {
+                displayPassword = generateDisplayPassword(u.username, userId);
+                actualPasswords[userId] = displayPassword;
+            }
+
+            return {
+                username: u.username || '',
+                email: u.email || '',
+                password: displayPassword,
+                userRole: u.role || '',
+                contact: u.contact || '',
+                createdAt: u.date_created ? formatDateForDisplay(u.date_created) : '',
+                user_id: userId
+            };
+        });
+        saveStoredPasswords();
+
+        console.log('Transformed studentList:', studentList);
+        console.log('Transformed assessorList:', assessorList);
+        console.log('Transformed accountList:', accountList);
+
+        // Load evaluations from localStorage
+        loadEvaluations();
+
+        return true;
+    } catch (error) {
+        console.error('Error loading data:', error);
+        studentList = [];
+        assessorList = [];
+        accountList = [];
+        return false;
+    }
+}
+
+function loadStoredPasswords() {
+    const stored = localStorage.getItem('accountPasswords');
+    if (stored) {
+        try {
+            actualPasswords = JSON.parse(stored);
+        } catch (e) { }
+    }
+}
+
+function saveStoredPasswords() {
+    localStorage.setItem('accountPasswords', JSON.stringify(actualPasswords));
+}
+
+function loadEvaluations() {
+    const saved = localStorage.getItem('assessorEvaluations');
+    if (saved) {
+        try {
+            assessorEvaluations = JSON.parse(saved);
+        } catch (e) {
+            console.error('Eval load error:', e);
+            assessorEvaluations = {};
+        }
+    } else {
+        assessorEvaluations = {};
+    }
+}
+
+function saveEvaluationsToStorage() {
+    localStorage.setItem('assessorEvaluations', JSON.stringify(assessorEvaluations));
+}
 
 // ============================================
 // SET DYNAMIC TABLE HEIGHT
@@ -136,54 +220,10 @@ function observeTableChanges() {
 }
 
 // ============================================
-// STORING AND LOADING DATA FROM LOCAL STORAGE
-// ============================================
-let saveTimeout;
-
-function saveDataToLocalStorage() {
-    clearTimeout(saveTimeout);
-    saveTimeout = setTimeout(() => {
-        localStorage.setItem('internshipEvalData', JSON.stringify({
-            accountList, studentList, assessorList
-        }));
-    }, 300);
-}
-
-function loadDataFromLocalStorage() {
-    const saved = localStorage.getItem('internshipEvalData');
-
-    if (saved) {
-        try {
-            const data = JSON.parse(saved);
-            accountList = data.accountList || [...DEMO_DATA.accounts];
-            studentList = data.studentList || [...DEMO_DATA.students];
-            assessorList = data.assessorList || [...DEMO_DATA.assessors];
-            return true;
-        } catch (e) {
-            console.error('Load error:', e);
-        }
-    }
-    accountList = [...DEMO_DATA.accounts];
-    studentList = [...DEMO_DATA.students];
-    assessorList = [...DEMO_DATA.assessors];
-    return false;
-}
-
-function loadEvaluations() {
-    const saved = localStorage.getItem('assessorEvaluations');
-    if (saved) {
-        try {
-            assessorEvaluations = JSON.parse(saved);
-        } catch (e) {
-            console.error('Eval load error:', e);
-        }
-    }
-}
-
-// ======================
 // LOGIN MANAGEMENT
-// ======================
-function checkLogin() {
+// ============================================
+
+async function checkLogin() {
     const loggedIn = sessionStorage.getItem('loggedInUser');
     if (!loggedIn) {
         showAccessDenied();
@@ -192,7 +232,6 @@ function checkLogin() {
 
     try {
         const user = JSON.parse(loggedIn);
-        currentSessionId = getCurrentSessionId();
         if (DOM.usernameDisplay && DOM.userRoleDisplay) {
             DOM.usernameDisplay.textContent = user.username;
             DOM.userRoleDisplay.textContent = user.userRole;
@@ -242,7 +281,6 @@ function showAccessDenied() {
 
 function logout() {
     sessionStorage.removeItem('loggedInUser');
-    sessionStorage.removeItem('dashboardSessionId');
     if (DOM.userInfo) DOM.userInfo.style.display = 'none';
     if (DOM.loginBtn) {
         DOM.loginBtn.textContent = 'LOGIN';
@@ -260,31 +298,31 @@ function setupLoginForm() {
     const form = document.querySelector('.form-box-login form');
     if (!form) return;
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = form.querySelector('input[type="email"]').value.trim();
         const password = form.querySelector('input[type="password"]').value.trim();
 
-        const matched = accountList.find(acc => acc.email === email && acc.password === password);
+        const result = await API.login(email, password);
 
-        if (matched) {
+        if (result.success) {
             if (DOM.wrapper) DOM.wrapper.classList.remove('active-popup');
 
             sessionStorage.setItem('loggedInUser', JSON.stringify({
-                username: matched.username,
-                email: matched.email,
-                userRole: matched.userRole
+                username: result.user.username,
+                email: result.user.email,
+                userRole: result.user.userRole,
+                userId: result.user.user_id
             }));
 
-            alert(`Logged in as ${matched.username} (${matched.userRole})`);
+            alert(`Logged in as ${result.user.username} (${result.user.userRole})`);
 
-            loadDataFromLocalStorage();
-            loadEvaluations();
+            await loadDataFromAPI();
             checkLogin();
 
             form.reset();
         } else {
-            alert('Invalid email or password');
+            alert(result.message || 'Invalid email or password');
         }
     });
 }
@@ -305,13 +343,6 @@ function setupEventListeners() {
             DOM.wrapper.classList.remove('active-popup');
         });
     }
-
-    window.addEventListener('storage', (e) => {
-        if (e.key === 'internshipEvalData') {
-            loadAccounts();
-            renderAdminContacts();
-        }
-    });
 
     const addStudentBtn = document.getElementById('addStudentBtn');
     const addAssessorBtn = document.getElementById('addAssessorBtn');
@@ -334,16 +365,8 @@ function setupEventListeners() {
 // INITIALIZATION
 // ======================
 
-function initData() {
-    const loaded = loadDataFromLocalStorage();
-    loadEvaluations();
-
-    if (!loaded) {
-        studentList = JSON.parse(JSON.stringify(DEMO_DATA.students));
-        assessorList = JSON.parse(JSON.stringify(DEMO_DATA.assessors));
-        accountList = JSON.parse(JSON.stringify(DEMO_DATA.accounts));
-        console.log('Using demo data');
-    }
+async function initData() {
+    await loadDataFromAPI();
 }
 
 function renderAllTables() {
@@ -364,10 +387,7 @@ function renderAllTables() {
     }
 
     setupRowDelegation();
-
-    saveDataToLocalStorage();
 }
-
 
 //=============================
 // SELECT ROWS FUNCTION
@@ -380,21 +400,66 @@ function clearAllSelections() {
 }
 
 function setupRowDelegation() {
-    document.querySelectorAll('.scrollable-table tbody').forEach(tbody => {
-        tbody.addEventListener('click', (e) => {
-            const row = e.target.closest('tr');
-            if (!row) return;
+    // Account table row selection
+    if (DOM.accountTbody) {
+        DOM.accountTbody.removeEventListener('click', handleAccountRowClick);
+        DOM.accountTbody.addEventListener('click', handleAccountRowClick);
+    }
 
-            if (e.target.closest('.table-btn') || e.target.closest('button') || e.target.closest('input')) {
-                return;
-            }
+    // Student table row selection
+    if (DOM.studentTbody) {
+        DOM.studentTbody.removeEventListener('click', handleStudentRowClick);
+        DOM.studentTbody.addEventListener('click', handleStudentRowClick);
+    }
 
-            clearAllSelections();
-            row.classList.add('selected-row');
-        });
-    });
+    // Assessor table row selection
+    if (DOM.assessorTbody) {
+        DOM.assessorTbody.removeEventListener('click', handleAssessorRowClick);
+        DOM.assessorTbody.addEventListener('click', handleAssessorRowClick);
+    }
 }
 
+function handleAccountRowClick(e) {
+    const row = e.target.closest('tr');
+    if (!row) return;
+
+    // Don't select if clicking on a button
+    if (e.target.closest('.edit-account-btn') || e.target.closest('.delete-account-btn') ||
+        e.target.closest('.save-account-btn') || e.target.closest('.cancel-account-btn')) {
+        return;
+    }
+
+    clearAllSelections();
+    row.classList.add('selected-row');
+}
+
+function handleStudentRowClick(e) {
+    const row = e.target.closest('tr');
+    if (!row) return;
+
+    // Don't select if clicking on a button
+    if (e.target.closest('.edit-student-btn') || e.target.closest('.delete-student-btn') ||
+        e.target.closest('.save-student-btn') || e.target.closest('.cancel-student-btn')) {
+        return;
+    }
+
+    clearAllSelections();
+    row.classList.add('selected-row');
+}
+
+function handleAssessorRowClick(e) {
+    const row = e.target.closest('tr');
+    if (!row) return;
+
+    // Don't select if clicking on a button
+    if (e.target.closest('.edit-assessor-btn') || e.target.closest('.delete-assessor-btn') ||
+        e.target.closest('.save-assessor-btn') || e.target.closest('.cancel-assessor-btn')) {
+        return;
+    }
+
+    clearAllSelections();
+    row.classList.add('selected-row');
+}
 
 // ============================================
 // REGISTERED ACCOUNT TABLE FUNCTIONALITY  
@@ -409,8 +474,16 @@ function insertAccountAddForm() {
     addRow.innerHTML = `
         <td><input type="text" id="add_account_username" placeholder="Username" style="width:80px"></td>
         <td><input type="email" id="add_account_email" placeholder="Email" style="width:110px"></td>
-        <td><input type="text" id="add_account_password" placeholder="Password" style="width:110px"></td>
-        <td><input type="text" id="add_account_role" placeholder="User Role" style="width:110px"></td>
+        <td>
+            <input type="text" id="add_account_password" placeholder="Will be generated" 
+                   style="width:140px; background:#f0f0f0; color:#666;" readonly>
+        </td>
+        <td>
+            <select id="add_account_role" style="width:110px; padding:4px;">
+                <option value="Administrator">Administrator</option>
+                <option value="Assessor">Assessor</option>
+            </select>
+        </td>
         <td><input type="tel" id="add_account_contact" placeholder="Contact" style="width:110px"></td>
         <td style="color: rgba(255,255,255,0.7); font-size: 14px;">Auto-generated on save</td>
         <td class="action-cell">
@@ -427,11 +500,30 @@ function insertAccountAddForm() {
         DOM.accountTbody.appendChild(addRow);
     }
 
+    // Preview generated password when username changes
+    const usernameInput = document.getElementById('add_account_username');
+    const passwordField = document.getElementById('add_account_password');
+
+    if (usernameInput && passwordField) {
+        usernameInput.addEventListener('input', function () {
+            const username = this.value.trim();
+            if (username) {
+                const firstWord = username.split(' ')[0];
+                const previewNumbers = 'XXXXXX';  // Preview placeholder
+                passwordField.value = firstWord + previewNumbers;
+                passwordField.style.color = '#ffaa00';
+            } else {
+                passwordField.value = 'Enter username to preview';
+                passwordField.style.color = '#666';
+            }
+        });
+    }
+
     document.getElementById('saveAccountAddBtn').addEventListener('click', saveAccountAdd);
     document.getElementById('cancelAccountAddBtn').addEventListener('click', cancelAccountAdd);
 }
 
-function saveAccountAdd() {
+async function saveAccountAdd() {
     const newUsername = document.getElementById('add_account_username').value.trim();
 
     if (!newUsername) {
@@ -440,48 +532,37 @@ function saveAccountAdd() {
         return;
     }
 
-    // Get current date in DD/MM/YYYY format
-    const today = new Date();
-    const day = String(today.getDate()).padStart(2, '0');
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const year = today.getFullYear();
-    const currentDate = `${day}/${month}/${year}`;
+    const firstWord = newUsername.split(' ')[0];
+
+    const randomNumbers = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+    const generatedPassword = firstWord + randomNumbers;
 
     const newAccount = {
         username: newUsername,
         email: document.getElementById('add_account_email').value.trim(),
-        password: document.getElementById('add_account_password').value.trim(),
-        userRole: document.getElementById('add_account_role').value.trim(),
+        password: generatedPassword,
+        userRole: document.getElementById('add_account_role').value,
         contact: document.getElementById('add_account_contact').value.trim(),
-        createdAt: currentDate,  // Auto-generated date
-        createdAtSession: currentSessionId
+        department: '',
+        assessor_role: 'Assessor'
     };
 
-    accountList.push(newAccount);
+    const result = await API.addUser(newAccount);
 
-    if ((newAccount.userRole && newAccount.userRole.toLowerCase() === 'assessor')) {
-        // Generate assessor ID (A + 4 digits)
-        const nextIdNum = assessorList.length + 1;
-        const assessorId = `A${String(nextIdNum).padStart(3, '0')}`;
+    if (result.success) {
+        // Store the actual password
+        if (result.password) {
+            actualPasswords[result.user_id] = result.password;
+            saveStoredPasswords();
+        }
 
-        const newAssessor = {
-            id: assessorId,
-            name: newUsername,
-            role: '-',
-            dept: '-',
-            email: newAccount.email,
-            contact: newAccount.contact,
-            assignedStudentIds: [],
-            createdAtSession: currentSessionId
-        };
-
-        assessorList.push(newAssessor);
-        console.log(`Auto-created assessor: ${newAssessor.name} with ID ${assessorId}`);
+        alert(`Account created successfully!\nUsername: ${newUsername}\nPassword: ${generatedPassword}`);
+        isAccountAddFormVisible = false;
+        await loadDataFromAPI();
+        renderAllTables();
+    } else {
+        alert('Error creating account: ' + (result.error || 'Unknown error'));
     }
-
-    isAccountAddFormVisible = false;
-    saveDataToLocalStorage();
-    renderAllTables();
 }
 
 function cancelAccountAdd() {
@@ -511,24 +592,18 @@ function addNewAccount() {
 function renderAccountTable() {
     if (!DOM.accountTbody) return;
 
-    // Get only session-added accounts
-    const sessionAccounts = getSessionFilteredAccounts();
-
-    // Clear the table first
     DOM.accountTbody.innerHTML = '';
 
-    if (sessionAccounts.length === 0) {
-        // Show message but DON'T return - we still need to show add form
+    if (accountList.length === 0) {
         const emptyMessageRow = document.createElement('tr');
-        emptyMessageRow.innerHTML = `<td colspan="7" style="text-align:center">No accounts added in this session yet. Click "Add new account" to add.</td>`;
+        emptyMessageRow.innerHTML = `<td colspan="7" style="text-align:center">No accounts found. Click "Add new account" to add.</td>`;
         DOM.accountTbody.appendChild(emptyMessageRow);
     } else {
-        sessionAccounts.sort((a, b) => a.username.localeCompare(b.username));
+        accountList.sort((a, b) => a.username.localeCompare(b.username));
 
-        sessionAccounts.forEach((account) => {
-            const originalIndex = accountList.findIndex(a => a.email === account.email && a.createdAtSession === account.createdAtSession);
+        accountList.forEach((account, index) => {
             const row = document.createElement('tr');
-            row.setAttribute('data-account-index', originalIndex);
+            row.setAttribute('data-account-index', index);
             row.innerHTML = `
                 <td>${escapeHtml(account.username)}</td>
                 <td>${escapeHtml(account.email)}</td>
@@ -537,35 +612,39 @@ function renderAccountTable() {
                 <td>${escapeHtml(account.contact)}</td>
                 <td>${escapeHtml(account.createdAt)}</td>
                 <td class="action-cell">
-                    <button class="table-btn" id="edit-account-btn" data-index="${originalIndex}">Edit</button>
-                    <button class="table-btn" id="delete-account-btn" data-index="${originalIndex}">Delete</button>
+                    <button class="edit-account-btn" data-index="${index}">Edit</button>
+                    <button class="delete-account-btn" data-index="${index}">Delete</button>
                 </td>
             `;
             DOM.accountTbody.appendChild(row);
         });
     }
 
-    // Always check if we need to show the add form
     if (isAccountAddFormVisible) {
         insertAccountAddForm();
     }
 
-    // Re-attach event listeners
-    document.querySelectorAll('#edit-account-btn, [id^="edit-account-btn"]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const idx = parseInt(btn.dataset.index);
-            enableEditAccountRow(idx);
-        });
+    document.querySelectorAll('.edit-account-btn').forEach(btn => {
+        btn.removeEventListener('click', handleEditAccount);
+        btn.addEventListener('click', handleEditAccount);
     });
 
-    document.querySelectorAll('#delete-account-btn, [id^="delete-account-btn"]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const idx = parseInt(btn.dataset.index);
-            deleteAccount(idx);
-        });
+    document.querySelectorAll('.delete-account-btn').forEach(btn => {
+        btn.removeEventListener('click', handleDeleteAccount);
+        btn.addEventListener('click', handleDeleteAccount);
     });
+}
+
+function handleEditAccount(e) {
+    e.stopPropagation();
+    const idx = parseInt(e.currentTarget.dataset.index);
+    enableEditAccountRow(idx);
+}
+
+function handleDeleteAccount(e) {
+    e.stopPropagation();
+    const idx = parseInt(e.currentTarget.dataset.index);
+    deleteAccount(idx);
 }
 
 function enableEditAccountRow(index) {
@@ -573,94 +652,105 @@ function enableEditAccountRow(index) {
     const row = DOM.accountTbody.querySelector(`tr[data-account-index="${index}"]`);
     if (!row) return;
 
-    row.innerHTML = `
-        <td><input type="text" value="${account.username || ''}" id="edit_account_username_${index}" style="width:70px; padding:3px;"></td>
-        <td><input type="email" value="${account.email || ''}" id="edit_account_email_${index}" style="width:100px; padding:3px;"></td>
-        <td><input type="text" value="${account.password || ''}" id="edit_account_password_${index}" style="width:100px; padding:3px;"></td>
-        <td><input type="text" value="${account.userRole || ''}" id="edit_account_role_${index}" style="width:100px; padding:3px;"></td>
-        <td><input type="tel" value="${account.contact || ''}" id="edit_account_contact_${index}" style="width:100px; padding:3px;"></td>
-        <td><input type="date" value="${account.createdAt || ''}" id="edit_account_date_${index}" style="width:70px; padding:3px;"></td>
+    // Get current password display
+    const currentDisplayPassword = account.password;
 
+    row.innerHTML = `
+        <td><input type="text" value="${escapeHtml(account.username || '')}" id="edit_account_username_${index}" style="width:70px; padding:3px;"></td>
+        <td><input type="email" value="${escapeHtml(account.email || '')}" id="edit_account_email_${index}" style="width:100px; padding:3px;"></td>
+        <td>
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+                <input type="text" value="" id="edit_account_password_${index}" 
+                       placeholder=${escapeHtml(currentDisplayPassword)} 
+                       style="width:140px; padding:3px;">
+            </div>
+        </td>
+        <td>
+            <select id="edit_account_role_${index}" style="width:100px; padding:3px;">
+                <option value="Administrator" ${account.userRole === 'Administrator' ? 'selected' : ''}>Administrator</option>
+                <option value="Assessor" ${account.userRole === 'Assessor' ? 'selected' : ''}>Assessor</option>
+            </select>
+        </td>
+        <td><input type="tel" value="${escapeHtml(account.contact || '')}" id="edit_account_contact_${index}" style="width:100px; padding:3px;"></td>
+        <td style="color: rgba(255,255,255,0.7); font-size: 14px;">${escapeHtml(account.createdAt)}</td>
         <td class="action-cell">
-            <button class="table-btn" id="save-account-btn-${index}" data-index="${index}">Save</button>
-            <button class="table-btn" id="cancel-account-btn-${index}" data-index="${index}">Cancel</button>
+            <button class="table-btn save-account-btn" data-index="${index}">Save</button>
+            <button class="table-btn cancel-account-btn" data-index="${index}">Cancel</button>
         </td>
     `;
 
-    document.getElementById(`save-account-btn-${index}`).addEventListener('click', () => saveAccountEdit(index));
-    document.getElementById(`cancel-account-btn-${index}`).addEventListener('click', () => renderAllTables());
+    document.querySelector(`.save-account-btn[data-index="${index}"]`).addEventListener('click', () => saveAccountEdit(index));
+    document.querySelector(`.cancel-account-btn[data-index="${index}"]`).addEventListener('click', () => renderAllTables());
 }
 
-function saveAccountEdit(index) {
+async function saveAccountEdit(index) {
     const oldAccount = accountList[index];
+    const newPasswordInput = document.getElementById(`edit_account_password_${index}`);
+    const newPassword = newPasswordInput ? newPasswordInput.value.trim() : '';
 
-    const newAccount = {
-        username: document.getElementById(`edit_account_username_${index}`).value,
-        email: document.getElementById(`edit_account_email_${index}`).value,
-        password: document.getElementById(`edit_account_password_${index}`).value,
-        userRole: document.getElementById(`edit_account_role_${index}`).value,
-        contact: document.getElementById(`edit_account_contact_${index}`).value,
-        createdAt: document.getElementById(`edit_account_date_${index}`).value
+    const updatedUsername = document.getElementById(`edit_account_username_${index}`).value;
+    const updatedEmail = document.getElementById(`edit_account_email_${index}`).value;
+    const updatedRole = document.getElementById(`edit_account_role_${index}`).value;
+    const updatedContact = document.getElementById(`edit_account_contact_${index}`).value;
+
+    const updatedAccount = {
+        user_id: oldAccount.user_id,
+        username: updatedUsername,
+        email: updatedEmail,
+        userRole: updatedRole,
+        contact: updatedContact
     };
 
-    accountList[index] = newAccount;
+    let passwordChanged = false;
+    let newPlainPassword = null;
 
-    const wasAssessor = oldAccount.userRole && oldAccount.userRole.toLowerCase() === 'assessor';
-    const isNowAssessor = newAccount.userRole && newAccount.userRole.toLowerCase() === 'assessor';
-
-    if (wasAssessor && !isNowAssessor) {
-        // Remove from assessorList if exists
-        const assessorIndex = assessorList.findIndex(a => a.email === oldAccount.email);
-        if (assessorIndex !== -1) {
-            assessorList.splice(assessorIndex, 1);
-        }
-    } else if (!wasAssessor && isNowAssessor) {
-        // Add to assessorList
-        const existingAssessor = assessorList.find(a => a.email === newAccount.email);
-        if (!existingAssessor) {
-            const nextIdNum = assessorList.length + 1;
-            const assessorId = `A${String(nextIdNum).padStart(3, '0')}`;
-            assessorList.push({
-                id: assessorId,
-                name: newAccount.username,
-                role: '-',
-                dept: '-',
-                email: newAccount.email,
-                contact: newAccount.contact,
-                assignedStudentIds: []
-            });
-        }
-    } else if (wasAssessor && isNowAssessor) {
-        // Update existing assessor info
-        const assessorIndex = assessorList.findIndex(a => a.email === oldAccount.email);
-        if (assessorIndex !== -1) {
-            assessorList[assessorIndex] = {
-                ...assessorList[assessorIndex],
-                name: newAccount.username,
-                email: newAccount.email,
-                contact: newAccount.contact
-            };
-        }
+    if (newPassword && newPassword !== '') {
+        updatedAccount.password = newPassword;
+        passwordChanged = true;
+        newPlainPassword = newPassword;
     }
 
-    renderAllTables();
-}
+    const result = await API.updateUser(updatedAccount);
 
-function deleteAccount(index) {
-    if (confirm('Are you sure you want to delete this account?')) {
-        const deletedAccount = accountList[index];
-
-        if (deletedAccount.userRole && deletedAccount.userRole.toLowerCase() === 'assessor') {
-            const assessorIndex = assessorList.findIndex(a => a.email === deletedAccount.email);
-            if (assessorIndex !== -1) {
-                assessorList.splice(assessorIndex, 1);
-                console.log(`Removed assessor: ${deletedAccount.username}`);
-            }
+    if (result.success) {
+        // Update stored password if changed
+        if (passwordChanged && newPlainPassword) {
+            actualPasswords[oldAccount.user_id] = newPlainPassword;
+            saveStoredPasswords();
+            alert(`✅ Account updated successfully! New Password: ${newPlainPassword}`);
+        } else {
+            alert('✅ Account updated successfully!');
         }
-        accountList.splice(index, 1);
+
+        await loadDataFromAPI();
         renderAllTables();
+    } else {
+        alert('❌ Error updating account: ' + (result.error || 'Unknown error'));
     }
 }
+
+async function deleteAccount(index) {
+    if (confirm('Are you sure you want to delete this account?')) {
+        const account = accountList[index];
+        const result = await API.deleteUser(account.user_id);
+
+        if (result.success) {
+            await loadDataFromAPI();
+            renderAllTables();
+            alert('Account deleted successfully');
+        } else {
+            alert('Error deleting account: ' + (result.error || 'Unknown error'));
+        }
+    }
+}
+
+function generateDisplayPassword(username, userId) {
+    if (!username) return 'user' + String(userId || '0').padStart(6, '0');
+    const firstWord = username.split(' ')[0];
+    const numbers = String(userId || Math.floor(Math.random() * 1000000)).padStart(6, '0').slice(-6);
+    return firstWord + numbers;
+}
+
 // ============================================
 // STUDENT TABLE FUNCTIONALITY  
 // ============================================
@@ -683,7 +773,7 @@ function insertStudentAddForm() {
     </select>`;
 
     addRow.innerHTML = `
-        <td><input type="text" id="add_student_id" placeholder="S1006" style="width:80px"></td>
+        <td><input type="text" id="add_student_id" placeholder="Student ID" style="width:80px"></td>
         <td><input type="text" id="add_student_name" placeholder="Full name" style="width:110px"></td>
         <td><input type="text" id="add_programme" placeholder="Programme" style="width:110px"></td>
         <td><input type="text" id="add_company" placeholder="Company" style="width:110px"></td>
@@ -715,7 +805,7 @@ function insertStudentAddForm() {
     document.getElementById('add_student_id').focus();
 }
 
-function saveStudentAdd() {
+async function saveStudentAdd() {
     const newId = document.getElementById('add_student_id').value.trim();
     const newName = document.getElementById('add_student_name').value.trim();
 
@@ -730,68 +820,43 @@ function saveStudentAdd() {
         return;
     }
 
-    if (studentList.find(s => s.id === newId)) {
-        alert(`Student ID ${newId} already exists!`);
-        document.getElementById('add_student_id').focus();
-        return;
-    }
-
-    // Get start and end dates and combine them
     const startDate = document.getElementById('add_internship_start').value;
     const endDate = document.getElementById('add_internship_end').value;
-    let internshipPeriod = '';
-
-    if (startDate && endDate) {
-        const formattedStart = new Date(startDate).toLocaleDateString('en-GB');
-        const formattedEnd = new Date(endDate).toLocaleDateString('en-GB');
-        internshipPeriod = `${formattedStart} to ${formattedEnd}`;
-    } else if (startDate) {
-        const formattedStart = new Date(startDate).toLocaleDateString('en-GB');
-        internshipPeriod = `${formattedStart} onwards`;
-    } else if (endDate) {
-        const formattedEnd = new Date(endDate).toLocaleDateString('en-GB');
-        internshipPeriod = `Until ${formattedEnd}`;
-    }
-
     const newStatus = document.getElementById('add_status').value;
     const newAssessorName = document.getElementById('add_assessor').value;
 
+    const selectedAssessor = assessorList.find(a => a.name === newAssessorName);
+    const assessorId = selectedAssessor ? parseInt(selectedAssessor.id) : null;
+
     const newStudent = {
-        id: newId,
+        student_id: parseInt(newId),
         name: newName,
         programme: document.getElementById('add_programme').value.trim(),
-        company: document.getElementById('add_company').value.trim(),
-        year: document.getElementById('add_year').value.trim(),
-        email: document.getElementById('add_email').value.trim(),
-        contact: document.getElementById('add_contact').value.trim(),
+        company_name: document.getElementById('add_company').value.trim(),
+        enrollment_year: parseInt(document.getElementById('add_year').value.trim()) || new Date().getFullYear(),
+        student_email: document.getElementById('add_email').value.trim(),
+        student_contact: parseInt(document.getElementById('add_contact').value.trim()) || 0,
+        assigned_assessor: assessorId,
         status: newStatus,
-        assigned_assessor: newAssessorName,
-        internshipPeriod: internshipPeriod,
-        createdAtSession: currentSessionId
+        start_date: startDate || null,
+        end_date: endDate || null
     };
 
-    studentList.push(newStudent);
+    const result = await API.addStudent(newStudent);
 
-    // Add to assessor's assigned students list if assessor is selected
-    if (newAssessorName) {
-        const assessor = assessorList.find(a => a.name === newAssessorName);
-        if (assessor) {
-            if (!assessor.assignedStudentIds) {
-                assessor.assignedStudentIds = [];
-            }
-            if (!assessor.assignedStudentIds.includes(newId)) {
-                assessor.assignedStudentIds.push(newId);
-            }
-        }
+    if (result.success) {
+        alert('Student added successfully!');
+        isStudentAddFormVisible = false;
+        await loadDataFromAPI();
+        renderAllTables();
+    } else {
+        alert('Error adding student: ' + (result.error || 'Unknown error'));
     }
-
-    isStudentAddFormVisible = false;
-    renderAllTables();
 }
 
 function cancelStudentAdd() {
     isStudentAddFormVisible = false;
-    renderAllTables();;
+    renderAllTables();
 }
 
 function addNewStudent() {
@@ -817,131 +882,21 @@ function getAssessorNamesList() {
     return assessorList.map(assessor => assessor.name);
 }
 
-function attachStudentDropdownListeners() {
-    // Status dropdown listeners
-    document.querySelectorAll('.status-dropdown').forEach(dropdown => {
-        dropdown.removeEventListener('change', handleStatusChange);
-        dropdown.addEventListener('change', handleStatusChange);
-    });
-
-    // Assessor dropdown listeners
-    document.querySelectorAll('.assessor-dropdown-table').forEach(dropdown => {
-        dropdown.removeEventListener('change', handleAssessorChange);
-        dropdown.addEventListener('change', handleAssessorChange);
-    });
-}
-
-function handleStatusChange(e) {
-    const index = parseInt(e.target.getAttribute('data-student-index'));
-    const newStatus = e.target.value;
-
-    if (studentList[index]) {
-        studentList[index].status = newStatus;
-
-        // Sync assignedStudentIds on the assessor to match the student's assigned_assessor field
-        const student = studentList[index];
-        if (student.assigned_assessor) {
-            const assessor = assessorList.find(a => a.name === student.assigned_assessor);
-            if (assessor) {
-                if (!assessor.assignedStudentIds) assessor.assignedStudentIds = [];
-                if (!assessor.assignedStudentIds.includes(student.id)) {
-                    assessor.assignedStudentIds.push(student.id);
-                }
-            }
-        }
-
-        syncAssignedStudentIds();
-
-        saveDataToLocalStorage();
-
-        // Update assessor table if needed (show which students are assigned)
-        renderAssessorTable();
-
-        // If admin view is showing assessor dashboard, update it
-        const loggedInUser = sessionStorage.getItem('loggedInUser');
-        if (loggedInUser) {
-            const user = JSON.parse(loggedInUser);
-            if (user.userRole?.toLowerCase() === 'assessor') {
-                const assessor = assessorList.find(a => a.email === user.email);
-                if (assessor) {
-                    renderAssessorDashboard(assessor);
-                }
-            }
-        }
-    }
-}
-
-function handleAssessorChange(e) {
-    const index = parseInt(e.target.getAttribute('data-student-index'));
-    const newAssessorName = e.target.value;
-    const oldAssessorName = studentList[index].assigned_assessor;
-
-    if (studentList[index]) {
-        // Update student's assigned assessor
-        studentList[index].assigned_assessor = newAssessorName;
-
-        // Remove student from old assessor's list
-        if (oldAssessorName) {
-            const oldAssessor = assessorList.find(a => a.name === oldAssessorName);
-            if (oldAssessor && oldAssessor.assignedStudentIds) {
-                const studentIdIndex = oldAssessor.assignedStudentIds.indexOf(studentList[index].id);
-                if (studentIdIndex !== -1) {
-                    oldAssessor.assignedStudentIds.splice(studentIdIndex, 1);
-                }
-            }
-        }
-
-        // Add student to new assessor's list
-        if (newAssessorName) {
-            const newAssessor = assessorList.find(a => a.name === newAssessorName);
-            if (newAssessor) {
-                if (!newAssessor.assignedStudentIds) {
-                    newAssessor.assignedStudentIds = [];
-                }
-                if (!newAssessor.assignedStudentIds.includes(studentList[index].id)) {
-                    newAssessor.assignedStudentIds.push(studentList[index].id);
-                }
-            }
-        }
-
-        // Save changes
-        saveDataToLocalStorage();
-
-        // Refresh both tables
-        renderAssessorTable();
-
-        // Update assessor dashboard if current user is an assessor
-        const loggedInUser = sessionStorage.getItem('loggedInUser');
-        if (loggedInUser) {
-            const user = JSON.parse(loggedInUser);
-            if (user.userRole?.toLowerCase() === 'assessor') {
-                const assessor = assessorList.find(a => a.email === user.email);
-                if (assessor) {
-                    renderAssessorDashboard(assessor);
-                }
-            }
-        }
-    }
-}
-
 function renderStudentTable() {
     if (!DOM.studentTbody) return;
 
-    const sessionStudents = getSessionFilteredStudents();
-
     DOM.studentTbody.innerHTML = '';
 
-    if (sessionStudents.length === 0) {
+    if (studentList.length === 0) {
         const emptyMessageRow = document.createElement('tr');
-        emptyMessageRow.innerHTML = `<td colspan="11" style="text-align:center">No students added in this session yet. Click "Add new student" to add.</td>`;
+        emptyMessageRow.innerHTML = `<td colspan="11" style="text-align:center">No students found. Click "Add new student" to add.</td>`;
         DOM.studentTbody.appendChild(emptyMessageRow);
     } else {
-        sessionStudents.sort((a, b) => (parseInt(a.id.replace(/\D/g, '')) || 0) - (parseInt(b.id.replace(/\D/g, '')) || 0));
+        studentList.sort((a, b) => (parseInt(a.id) || 0) - (parseInt(b.id) || 0));
 
-        sessionStudents.forEach((student) => {
-            const originalIndex = studentList.findIndex(s => s.id === student.id && s.createdAtSession === student.createdAtSession);
+        studentList.forEach((student, index) => {
             const row = document.createElement('tr');
-            row.setAttribute('data-student-index', originalIndex);
+            row.setAttribute('data-student-index', index);
             row.innerHTML = `
                 <td>${escapeHtml(student.id)}</td>
                 <td>${escapeHtml(student.name)}</td>
@@ -954,8 +909,8 @@ function renderStudentTable() {
                 <td class="status-cell">${escapeHtml(student.status || '—')}</td>
                 <td class="assessor-cell">${escapeHtml(student.assigned_assessor || '—')}</td>
                 <td class="action-cell">
-                    <button class="table-btn" id="edit-student-btn" data-index="${originalIndex}">Edit</button>
-                    <button class="table-btn" id="delete-student-btn" data-index="${originalIndex}">Delete</button>
+                    <button class="edit-student-btn" data-index="${index}">Edit</button>
+                    <button class="delete-student-btn" data-index="${index}">Delete</button>
                 </td>
             `;
             DOM.studentTbody.appendChild(row);
@@ -966,21 +921,27 @@ function renderStudentTable() {
         insertStudentAddForm();
     }
 
-    document.querySelectorAll('#edit-student-btn, [id^="edit-student-btn"]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const idx = parseInt(btn.dataset.index);
-            enableEditStudentRow(idx);
-        });
+    document.querySelectorAll('.edit-student-btn').forEach(btn => {
+        btn.removeEventListener('click', handleEditStudent);
+        btn.addEventListener('click', handleEditStudent);
     });
 
-    document.querySelectorAll('#delete-student-btn, [id^="delete-student-btn"]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const idx = parseInt(e.currentTarget.dataset.index);
-            deleteStudent(idx);
-        });
+    document.querySelectorAll('.delete-student-btn').forEach(btn => {
+        btn.removeEventListener('click', handleDeleteStudent);
+        btn.addEventListener('click', handleDeleteStudent);
     });
+}
+
+function handleEditStudent(e) {
+    e.stopPropagation();
+    const idx = parseInt(e.currentTarget.dataset.index);
+    enableEditStudentRow(idx);
+}
+
+function handleDeleteStudent(e) {
+    e.stopPropagation();
+    const idx = parseInt(e.currentTarget.dataset.index);
+    deleteStudent(idx);
 }
 
 function enableEditStudentRow(index) {
@@ -988,24 +949,6 @@ function enableEditStudentRow(index) {
     const row = DOM.studentTbody.querySelector(`tr[data-student-index="${index}"]`);
     if (!row) return;
 
-    // Parse existing internship period
-    let startDateValue = '';
-    let endDateValue = '';
-    if (student.internshipPeriod) {
-        const parts = student.internshipPeriod.split(' to ');
-        if (parts.length === 2) {
-            const startParts = parts[0].split('/');
-            const endParts = parts[1].split('/');
-            if (startParts.length === 3) {
-                startDateValue = `${startParts[2]}-${startParts[1]}-${startParts[0]}`;
-            }
-            if (endParts.length === 3) {
-                endDateValue = `${endParts[2]}-${endParts[1]}-${endParts[0]}`;
-            }
-        }
-    }
-
-    // Generate dropdowns for edit mode
     const statusOptions = ['Ongoing', 'Pending', 'Evaluated'];
     const statusDropdown = `<select id="edit_status_${index}" style="width:100px; padding:4px; border-radius:4px;">
         ${statusOptions.map(opt => `<option value="${opt}" ${student.status === opt ? 'selected' : ''}>${opt}</option>`).join('')}
@@ -1017,7 +960,7 @@ function enableEditStudentRow(index) {
     </select>`;
 
     row.innerHTML = `
-        <td><input type="text" value="${student.id || ''}" id="edit_id_${index}" style="width:70px; padding:3px;"></td>
+        <td><input type="text" value="${student.id || ''}" id="edit_id_${index}" style="width:70px; padding:3px;" readonly></td>
         <td><input type="text" value="${student.name || ''}" id="edit_name_${index}" style="width:100px; padding:3px;"></td>
         <td><input type="text" value="${student.programme || ''}" id="edit_prog_${index}" style="width:100px; padding:3px;"></td>
         <td><input type="text" value="${student.company || ''}" id="edit_comp_${index}" style="width:100px; padding:3px;"></td>
@@ -1025,90 +968,64 @@ function enableEditStudentRow(index) {
         <td><input type="email" value="${student.email || ''}" id="edit_email_${index}" style="width:120px; padding:3px;"></td>
         <td><input type="tel" value="${student.contact || ''}" id="edit_contact_${index}" style="width:100px; padding:3px;"></td>
         <td style="min-width: 200px;">
-            <input type="date" value="${startDateValue}" id="edit_start_${index}" style="width: 120px; margin-right: 5px;"> to 
-            <input type="date" value="${endDateValue}" id="edit_end_${index}" style="width: 120px;">
+            <input type="date" value="${student.start_date || ''}" id="edit_start_${index}" style="width: 120px; margin-right: 5px;"> to 
+            <input type="date" value="${student.end_date || ''}" id="edit_end_${index}" style="width: 120px;">
         </td>
         <td class="status-cell">${statusDropdown}</td>
         <td class="assessor-cell">${assessorDropdown}</td>
         <td class="action-cell">
-            <button class="table-btn" id="save-student-btn-${index}" data-index="${index}">Save</button>
-            <button class="table-btn" id="cancel-student-btn-${index}" data-index="${index}">Cancel</button>
+            <button class="table-btn save-student-btn" data-index="${index}">Save</button>
+            <button class="table-btn cancel-student-btn" data-index="${index}">Cancel</button>
         </td>
     `;
 
-    document.getElementById(`save-student-btn-${index}`).addEventListener('click', () => saveStudentEdit(index));
-    document.getElementById(`cancel-student-btn-${index}`).addEventListener('click', () => renderAllTables());
+    document.querySelector(`.save-student-btn[data-index="${index}"]`).addEventListener('click', () => saveStudentEdit(index));
+    document.querySelector(`.cancel-student-btn[data-index="${index}"]`).addEventListener('click', () => renderAllTables());
 }
 
-function saveStudentEdit(index) {
-    const startDate = document.getElementById(`edit_start_${index}`).value;
-    const endDate = document.getElementById(`edit_end_${index}`).value;
-    let internshipPeriod = '';
-
-    if (startDate && endDate) {
-        const formattedStart = new Date(startDate).toLocaleDateString('en-GB');
-        const formattedEnd = new Date(endDate).toLocaleDateString('en-GB');
-        internshipPeriod = `${formattedStart} to ${formattedEnd}`;
-    } else if (startDate) {
-        const formattedStart = new Date(startDate).toLocaleDateString('en-GB');
-        internshipPeriod = `${formattedStart} onwards`;
-    } else if (endDate) {
-        const formattedEnd = new Date(endDate).toLocaleDateString('en-GB');
-        internshipPeriod = `Until ${formattedEnd}`;
-    }
-
-    const oldAssessorName = studentList[index].assigned_assessor;
+async function saveStudentEdit(index) {
+    const student = studentList[index];
     const newAssessorName = document.getElementById(`edit_assigned_assessor_${index}`).value;
-    const newStatus = document.getElementById(`edit_status_${index}`).value;
+    const selectedAssessor = assessorList.find(a => a.name === newAssessorName);
+    const assessorId = selectedAssessor ? parseInt(selectedAssessor.id) : null;
 
-    // Update assessor assignments
-    if (oldAssessorName !== newAssessorName) {
-        // Remove from old assessor
-        if (oldAssessorName) {
-            const oldAssessor = assessorList.find(a => a.name === oldAssessorName);
-            if (oldAssessor && oldAssessor.assignedStudentIds) {
-                const studentIdIndex = oldAssessor.assignedStudentIds.indexOf(studentList[index].id);
-                if (studentIdIndex !== -1) {
-                    oldAssessor.assignedStudentIds.splice(studentIdIndex, 1);
-                }
-            }
-        }
-
-        // Add to new assessor
-        if (newAssessorName) {
-            const newAssessor = assessorList.find(a => a.name === newAssessorName);
-            if (newAssessor) {
-                if (!newAssessor.assignedStudentIds) {
-                    newAssessor.assignedStudentIds = [];
-                }
-                if (!newAssessor.assignedStudentIds.includes(studentList[index].id)) {
-                    newAssessor.assignedStudentIds.push(studentList[index].id);
-                }
-            }
-        }
-    }
-
-    const newStudent = {
-        id: document.getElementById(`edit_id_${index}`).value,
+    const updatedStudent = {
+        student_id: parseInt(student.id),
         name: document.getElementById(`edit_name_${index}`).value,
         programme: document.getElementById(`edit_prog_${index}`).value,
-        company: document.getElementById(`edit_comp_${index}`).value,
-        year: document.getElementById(`edit_year_${index}`).value,
-        email: document.getElementById(`edit_email_${index}`).value,
-        contact: document.getElementById(`edit_contact_${index}`).value.trim(),
-        status: newStatus,
-        assigned_assessor: newAssessorName,
-        internshipPeriod: internshipPeriod
+        company_name: document.getElementById(`edit_comp_${index}`).value,
+        enrollment_year: parseInt(document.getElementById(`edit_year_${index}`).value) || new Date().getFullYear(),
+        student_email: document.getElementById(`edit_email_${index}`).value,
+        student_contact: parseInt(document.getElementById(`edit_contact_${index}`).value) || 0,
+        assigned_assessor: assessorId,
+        status: document.getElementById(`edit_status_${index}`).value,
+        start_date: document.getElementById(`edit_start_${index}`).value || null,
+        end_date: document.getElementById(`edit_end_${index}`).value || null
     };
 
-    studentList[index] = newStudent;
-    renderAllTables();
+    const result = await API.updateStudent(updatedStudent);
+
+    if (result.success) {
+        await loadDataFromAPI();
+        renderAllTables();
+        alert('Student updated successfully');
+    } else {
+        alert('Error updating student: ' + (result.error || 'Unknown error'));
+    }
 }
 
-function deleteStudent(index) {
+async function deleteStudent(index) {
     if (confirm('Are you sure you want to delete this student?')) {
-        studentList.splice(index, 1);
-        renderAllTables();
+        const student = studentList[index];
+        const result = await API.deleteStudent(parseInt(student.id));
+
+        if (result.success) {
+            await loadDataFromAPI();
+            renderAllTables();
+            alert('Student deleted successfully');
+        } else {
+            alert('Error deleting student: ' + (result.error || 'Unknown error'));
+        }
     }
 }
 
@@ -1124,13 +1041,15 @@ function insertAssessorAddForm() {
     addRow.id = 'assessor-add-form-row';
 
     addRow.innerHTML = `
-        <td><input type="text" id="add_assessor_id" placeholder="A004" style="width:80px"></td>
         <td><input type="text" id="add_assessor_name" placeholder="Full name" style="width:110px"></td>
         <td><input type="text" id="add_assessor_role" placeholder="Role" style="width:100px"></td>
         <td><input type="text" id="add_assessor_dept" placeholder="Department" style="width:100px"></td>
         <td><input type="email" id="add_assessor_email" placeholder="Email" style="width:130px"></td>
         <td><input type="tel" id="add_assessor_contact" placeholder="Contact" style="width:100px"></td>
-        <td><input type="text" id="add_assessor_students" placeholder="Student IDs (comma)" style="width:140px"></td>
+        <td>
+            <input type="text" id="add_assessor_password" placeholder="Auto-generated" 
+                   style="width:100px; background:#f0f0f0; color:#666;" readonly>
+        </td>
         <td class="action-cell">
             <div class="action-buttons">
                 <button class="add-save-btn" id="saveAssessorAddBtn">Save</button>
@@ -1145,81 +1064,58 @@ function insertAssessorAddForm() {
         DOM.assessorTbody.appendChild(addRow);
     }
 
+    // Update password preview when name changes
+    const nameInput = document.getElementById('add_assessor_name');
+    const passwordField = document.getElementById('add_assessor_password');
+
+    if (nameInput && passwordField) {
+        nameInput.addEventListener('input', function () {
+            const name = this.value.trim();
+            if (name) {
+                passwordField.value = generateDisplayPassword(name);
+            } else {
+                passwordField.value = 'Auto-generated';
+            }
+        });
+    }
+
     document.getElementById('saveAssessorAddBtn').addEventListener('click', saveAssessorAdd);
     document.getElementById('cancelAssessorAddBtn').addEventListener('click', cancelAssessorAdd);
-    document.getElementById('add_assessor_id').focus();
+    document.getElementById('add_assessor_name').focus();
 }
 
-function isStudentAlreadyAssigned(studentId, excludeAssessorId = null) {
-    // Check all assessors except the one being edited
-    for (let i = 0; i < assessorList.length; i++) {
-        const assessor = assessorList[i];
-        if (excludeAssessorId !== null && assessor.id === excludeAssessorId) continue;
-
-        if (assessor.assignedStudentIds && assessor.assignedStudentIds.includes(studentId)) {
-            return assessor.name;
-        }
-    }
-    return null;
-}
-
-function saveAssessorAdd() {
-    const newId = document.getElementById('add_assessor_id').value.trim();
+async function saveAssessorAdd() {
     const newName = document.getElementById('add_assessor_name').value.trim();
 
-    // Validation
-    if (!newId) {
-        alert('Please enter Assessor ID');
-        document.getElementById('add_assessor_id').focus();
-        return;
-    }
     if (!newName) {
         alert('Please enter Assessor Name');
         document.getElementById('add_assessor_name').focus();
         return;
     }
 
-    if (assessorList.find(a => a.id === newId)) {
-        alert(`Assessor ID ${newId} already exists!`);
-        document.getElementById('add_assessor_id').focus();
-        return;
-    }
-
-    const studentIdsInput = document.getElementById('add_assessor_students').value.trim();
-    const studentIdsArray = studentIdsInput ? studentIdsInput.split(',').map(id => id.trim()) : [];
-
-    for (const studentId of studentIdsArray) {
-        const existingAssessorName = isStudentAlreadyAssigned(studentId);
-        if (existingAssessorName) {
-            const student = studentList.find(s => s.id === studentId);
-            alert(`Student ${studentId} (${student ? student.name : 'Unknown'}) is already assigned to assessor "${existingAssessorName}".`);
-            return;
-        }
-    }
+    // Auto-generate password from name
+    const generatedPassword = generateDisplayPassword(newName);
 
     const newAssessor = {
-        id: newId,
-        name: newName,
-        role: document.getElementById('add_assessor_role').value.trim(),
-        dept: document.getElementById('add_assessor_dept').value.trim(),
+        username: newName,
         email: document.getElementById('add_assessor_email').value.trim(),
+        password: generatedPassword,  // Auto-generated
         contact: document.getElementById('add_assessor_contact').value.trim(),
-        assignedStudentIds: studentIdsArray,
-        createdAtSession: currentSessionId
+        userRole: 'Assessor',
+        department: document.getElementById('add_assessor_dept').value.trim(),
+        assessor_role: document.getElementById('add_assessor_role').value.trim()
     };
 
-    assessorList.push(newAssessor);
+    const result = await API.addUser(newAssessor);
 
-    // Update student records with the new assessor assignment
-    for (const studentId of studentIdsArray) {
-        const student = studentList.find(s => s.id === studentId);
-        if (student) {
-            student.assigned_assessor = newName;
-        }
+    if (result.success) {
+        alert(`Assessor created successfully!\nUsername: ${newName}\nPassword: ${generatedPassword}`);
+        isAssessorAddFormVisible = false;
+        await loadDataFromAPI();
+        renderAllTables();
+    } else {
+        alert('Error creating assessor: ' + (result.error || 'Unknown error'));
     }
-
-    isAssessorAddFormVisible = false;
-    renderAllTables();
 }
 
 function cancelAssessorAdd() {
@@ -1249,23 +1145,19 @@ function addNewAssessor() {
 function renderAssessorTable() {
     if (!DOM.assessorTbody) return;
 
-    const sessionAssessors = getSessionFilteredAssessors();
-
     DOM.assessorTbody.innerHTML = '';
 
-    if (sessionAssessors.length === 0) {
+    if (assessorList.length === 0) {
         const emptyMessageRow = document.createElement('tr');
-        emptyMessageRow.innerHTML = `<td colspan="8" style="text-align:center">No assessors added in this session yet. Click "Add new assessor" to add.</td>`;
+        emptyMessageRow.innerHTML = `<td colspan="8" style="text-align:center">No assessors found. Click "Add new assessor" to add.`;
         DOM.assessorTbody.appendChild(emptyMessageRow);
     } else {
-        sessionAssessors.sort((a, b) => (parseInt(a.id.replace(/\D/g, '')) || 0) - (parseInt(b.id.replace(/\D/g, '')) || 0));
+        assessorList.sort((a, b) => (parseInt(a.id) || 0) - (parseInt(b.id) || 0));
 
-        sessionAssessors.forEach((assessor) => {
-            const originalIndex = assessorList.findIndex(a => a.id === assessor.id && a.createdAtSession === assessor.createdAtSession);
-
+        assessorList.forEach((assessor, index) => {
             let assignedStudents = '';
             if (assessor.assignedStudentIds && assessor.assignedStudentIds.length > 0) {
-                const studentNames = (assessor.assignedStudentIds || [])
+                const studentNames = assessor.assignedStudentIds
                     .map(id => studentList.find(s => s.id === id)?.name || id).filter(name => name);
                 assignedStudents = `<div class="assigned-list">${studentNames.map(name => `<span>${escapeHtml(name)}</span>`).join('')}</div>`;
             } else {
@@ -1273,7 +1165,7 @@ function renderAssessorTable() {
             }
 
             const row = document.createElement('tr');
-            row.setAttribute('data-assessor-index', originalIndex);
+            row.setAttribute('data-assessor-index', index);
             row.innerHTML = `
                 <td>${escapeHtml(assessor.id)}</td>
                 <td>${escapeHtml(assessor.name)}</td>
@@ -1283,8 +1175,8 @@ function renderAssessorTable() {
                 <td>${escapeHtml(assessor.contact)}</td>
                 <td>${assignedStudents}</td>
                 <td class="action-cell">
-                    <button class="table-btn" id="edit-assessor-btn" data-index="${originalIndex}">Edit</button>
-                    <button class="table-btn" id="delete-assessor-btn" data-index="${originalIndex}">Delete</button>
+                    <button class="edit-assessor-btn" data-index="${index}">Edit</button>
+                    <button class="delete-assessor-btn" data-index="${index}">Delete</button>
                 </td>
             `;
             DOM.assessorTbody.appendChild(row);
@@ -1295,30 +1187,34 @@ function renderAssessorTable() {
         insertAssessorAddForm();
     }
 
-    document.querySelectorAll('#edit-assessor-btn, [id^="edit-assessor-btn"]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const idx = parseInt(btn.dataset.index);
-            enableEditAssessorRow(idx);
-        });
+    document.querySelectorAll('.edit-assessor-btn').forEach(btn => {
+        btn.removeEventListener('click', handleEditAssessor);
+        btn.addEventListener('click', handleEditAssessor);
     });
 
-    document.querySelectorAll('#delete-assessor-btn, [id^="delete-assessor-btn"]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const idx = parseInt(btn.dataset.index);
-            deleteAssessor(idx);
-        });
+    document.querySelectorAll('.delete-assessor-btn').forEach(btn => {
+        btn.removeEventListener('click', handleDeleteAssessor);
+        btn.addEventListener('click', handleDeleteAssessor);
     });
 }
 
+function handleEditAssessor(e) {
+    e.stopPropagation();
+    const idx = parseInt(e.currentTarget.dataset.index);
+    enableEditAssessorRow(idx);
+}
+
+function handleDeleteAssessor(e) {
+    e.stopPropagation();
+    const idx = parseInt(e.currentTarget.dataset.index);
+    deleteAssessor(idx);
+}
+
 function syncAssignedStudentIds() {
-    // Clear all assessor's assignedStudentIds
     assessorList.forEach(assessor => {
         assessor.assignedStudentIds = [];
     });
 
-    // Rebuild from studentList
     studentList.forEach(student => {
         if (student.assigned_assessor && student.assigned_assessor !== '—' && student.assigned_assessor !== '') {
             const assessor = assessorList.find(a => a.name === student.assigned_assessor);
@@ -1327,8 +1223,6 @@ function syncAssignedStudentIds() {
             }
         }
     });
-
-    saveDataToLocalStorage();
 }
 
 function enableEditAssessorRow(index) {
@@ -1337,75 +1231,59 @@ function enableEditAssessorRow(index) {
     if (!row) return;
 
     row.innerHTML = `
-        <td><input type="text" value="${assessor.id || ''}" id="edit_assessor_id_${index}" style="width:70px; padding:3px;"></td>
+        <td><input type="text" value="${assessor.id || ''}" id="edit_assessor_id_${index}" style="width:70px; padding:3px;" readonly></td>
         <td><input type="text" value="${assessor.name || ''}" id="edit_assessor_name_${index}" style="width:100px; padding:3px;"></td>
         <td><input type="text" value="${assessor.role || ''}" id="edit_assessor_role_${index}" style="width:100px; padding:3px;"></td>
         <td><input type="text" value="${assessor.dept || ''}" id="edit_assessor_dept_${index}" style="width:100px; padding:3px;"></td>
         <td><input type="email" value="${assessor.email || ''}" id="edit_assessor_email_${index}" style="width:120px; padding:3px;"></td>
         <td><input type="tel" value="${assessor.contact || ''}" id="edit_assessor_contact_${index}" style="width:100px; padding:3px;"></td>
-        <td><input type="text" value="${assessor.assignedStudentIds ? assessor.assignedStudentIds.join(', ') : ''}" id="edit_assessor_students_${index}" style="width:100px; padding:3px;" placeholder="S1001, S1002"></td>
+        <td><input type="text" value="${assessor.assignedStudentIds ? assessor.assignedStudentIds.join(', ') : ''}" id="edit_assessor_students_${index}" style="width:100px; padding:3px;" placeholder="Student IDs (comma)"></td>
         <td class="action-cell">
-            <button class="table-btn" id="save-assessor-btn-${index}" data-index="${index}">Save</button>
-            <button class="table-btn" id="cancel-assessor-btn-${index}" data-index="${index}">Cancel</button>
+            <button class="table-btn save-assessor-btn" data-index="${index}">Save</button>
+            <button class="table-btn cancel-assessor-btn" data-index="${index}">Cancel</button>
         </td>
     `;
 
-    document.getElementById(`save-assessor-btn-${index}`).addEventListener('click', () => saveAssessorEdit(index));
-    document.getElementById(`cancel-assessor-btn-${index}`).addEventListener('click', () => renderAllTables());
+    document.querySelector(`.save-assessor-btn[data-index="${index}"]`).addEventListener('click', () => saveAssessorEdit(index));
+    document.querySelector(`.cancel-assessor-btn[data-index="${index}"]`).addEventListener('click', () => renderAllTables());
 }
 
-function saveAssessorEdit(index) {
-    const studentIdsInput = document.getElementById(`edit_assessor_students_${index}`).value;
-    const studentIdsArray = studentIdsInput ? studentIdsInput.split(',').map(id => id.trim()) : [];
-    const newAssessorName = document.getElementById(`edit_assessor_name_${index}`).value;
-    const oldAssessor = assessorList[index];
+async function saveAssessorEdit(index) {
+    const assessor = assessorList[index];
 
-    // Check if any of these students are already assigned to other assessors (excluding current assessor)
-    for (const studentId of studentIdsArray) {
-        const existingAssessorName = isStudentAlreadyAssigned(studentId, oldAssessor.id);
-        if (existingAssessorName) {
-            const student = studentList.find(s => s.id === studentId);
-            alert(`Student ${studentId} (${student ? student.name : 'Unknown'}) is already assigned to assessor "${existingAssessorName}"`);
-            return;
-        }
-    }
-
-    const newAssessor = {
-        id: document.getElementById(`edit_assessor_id_${index}`).value,
-        name: newAssessorName,
-        role: document.getElementById(`edit_assessor_role_${index}`).value,
-        dept: document.getElementById(`edit_assessor_dept_${index}`).value,
+    const updatedAssessor = {
+        user_id: assessor.user_id,
+        assessor_id: parseInt(assessor.id),
+        username: document.getElementById(`edit_assessor_name_${index}`).value,
         email: document.getElementById(`edit_assessor_email_${index}`).value,
         contact: document.getElementById(`edit_assessor_contact_${index}`).value,
-        assignedStudentIds: studentIdsArray
+        department: document.getElementById(`edit_assessor_dept_${index}`).value,
+        assessor_role: document.getElementById(`edit_assessor_role_${index}`).value
     };
 
-    if (oldAssessor.assignedStudentIds) {
-        for (const oldStudentId of oldAssessor.assignedStudentIds) {
-            if (!studentIdsArray.includes(oldStudentId)) {
-                const student = studentList.find(s => s.id === oldStudentId);
-                if (student && student.assigned_assessor === oldAssessor.name) {
-                    student.assigned_assessor = '';
-                }
-            }
-        }
-    }
+    const result = await API.updateAssessor(updatedAssessor);
 
-    for (const studentId of studentIdsArray) {
-        const student = studentList.find(s => s.id === studentId);
-        if (student) {
-            student.assigned_assessor = newAssessorName;
-        }
+    if (result.success) {
+        await loadDataFromAPI();
+        renderAllTables();
+        alert('Assessor updated successfully');
+    } else {
+        alert('Error updating assessor: ' + (result.error || 'Unknown error'));
     }
-
-    assessorList[index] = newAssessor;
-    renderAllTables();
 }
 
-function deleteAssessor(index) {
+async function deleteAssessor(index) {
     if (confirm('Are you sure you want to delete this assessor?')) {
-        assessorList.splice(index, 1);
-        renderAllTables();
+        const assessor = assessorList[index];
+        const result = await API.deleteAssessor(parseInt(assessor.id));
+
+        if (result.success) {
+            await loadDataFromAPI();
+            renderAllTables();
+            alert('Assessor deleted successfully');
+        } else {
+            alert('Error deleting assessor: ' + (result.error || 'Unknown error'));
+        }
     }
 }
 
@@ -1433,7 +1311,7 @@ function renderAssessorDashboard(assessor) {
         if (checkIfStudentEvaluated(student.id, assessor.id)) {
             const evalData = assessorEvaluations[`${assessor.id}_${student.id}`];
             completed.push({ ...student, evaluation: evalData });
-        } else if (student.status !== 'Evaluated' && student.status !== 'Ongoing') {
+        } else {
             pending.push(student);
         }
     });
@@ -1442,7 +1320,6 @@ function renderAssessorDashboard(assessor) {
     document.getElementById('completedCount').textContent = completed.length;
 
     renderPendingTable(pending, assessor);
-
     renderCompletedTable(completed, assessor);
 }
 
@@ -1455,7 +1332,7 @@ function renderPendingTable(pending, assessor) {
     }
 
     DOM.pendingTbody.innerHTML = pending.map(student => `
-            <tr>
+            <tr data-student-id="${student.id}">
                 <td>${escapeHtml(student.id)}</td>
                 <td>${escapeHtml(student.name)}</td>
                 <td>${escapeHtml(student.programme)}</td>
@@ -1464,15 +1341,15 @@ function renderPendingTable(pending, assessor) {
                 <td>${escapeHtml(student.email)}</td>
                 <td>${escapeHtml(student.contact)}</td>
                 <td>${escapeHtml(student.status)}</td>
-                <td class ="action-cell">
-                    <button class="table-btn" id="evaluate-btn" data-student-id="${student.id}" data-assessor-id="${assessor.id}">
+                <td class="action-cell">
+                    <button class="evaluate-btn" data-student-id="${student.id}" data-assessor-id="${assessor.id}">
                         Evaluate
                     </button>
-                </td>
-            </tr>
-            `).join('');
+                 </td>
+             </tr>
+        `).join('');
 
-    document.querySelectorAll('#evaluate-btn, [id^="evaluate-btn"]').forEach(btn => {
+    document.querySelectorAll('.evaluate-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             sessionStorage.setItem('evalStudentId', btn.getAttribute('data-student-id'));
             sessionStorage.setItem('evalAssessorId', btn.getAttribute('data-assessor-id'));
@@ -1505,16 +1382,16 @@ function renderCompletedTable(completed, assessor) {
                     <td>${escapeHtml(student.contact)}</td>
                     <td class="${scoreClass}">${score.toFixed(1)}%</td>
                     <td>${evalDate}</td>
-                <td class="action-cell">
-                    <button class="table-btn" id="view-btn" data-student-id="${student.id}" data-assessor-id="${assessor.id}">
-                        View
-                    </button>
-                </td>
-            </tr>
-        `;
+                    <td class="action-cell">
+                        <button class="view-btn" data-student-id="${student.id}" data-assessor-id="${assessor.id}">
+                            View
+                        </button>
+                    </td>
+                </tr>
+            `;
     }).join('');
 
-    document.querySelectorAll('#view-btn, [id^="view-btn"]').forEach(btn => {
+    document.querySelectorAll('.view-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             sessionStorage.setItem('viewStudentId', btn.getAttribute('data-student-id'));
             sessionStorage.setItem('viewAssessorId', btn.getAttribute('data-assessor-id'));
@@ -1524,16 +1401,34 @@ function renderCompletedTable(completed, assessor) {
     });
 }
 
+// ============================================
+// ADD UPDATE ASSESSOR API METHOD
+// ============================================
+
+// Add this to API if not already present
+if (!API.updateAssessor) {
+    API.updateAssessor = async function (assessorData) {
+        try {
+            const response = await fetch('api/assessors.php', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(assessorData)
+            });
+            return await response.json();
+        } catch (error) {
+            console.error('Error updating assessor:', error);
+            return { success: false, error: error.message };
+        }
+    };
+}
 
 // ============================================
-// BEGIN INITIALIZATION */
+// BEGIN INITIALIZATION
 // =============================================
 
-function init() {
-    loadDataFromLocalStorage();
-    loadEvaluations();
+async function init() {
+    await loadDataFromAPI();
     renderAllTables();
-    setupRowDelegation();
     setupLoginForm();
     setupEventListeners();
     observeTableChanges();
