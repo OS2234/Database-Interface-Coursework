@@ -67,6 +67,60 @@ const STORAGE_KEYS = {
     EVALUATIONS: 'assessorEvaluations'
 };
 
+// ============================================
+// AUTO-SAVE DRAFT INTEGRATION (Debounced - saves after user stops typing)
+// ============================================
+
+// Helper function to get current form data
+function getCurrentFormData() {
+    const scores = {};
+    EVALUATION_CRITERIA.forEach(criterion => {
+        const input = document.getElementById(`score_${criterion.key}`);
+        if (input) {
+            scores[criterion.key] = parseFloat(input.value) || 0;
+        }
+    });
+    const remarks = document.getElementById('assessorRemarks')?.value || '';
+    return { scores, remarks };
+}
+
+// Function to check for and restore draft
+function checkAndRestoreDraft(studentId, assessorId) {
+    if (!studentId || !assessorId) return false;
+
+    if (window.draftManager && window.draftManager.hasValidDraft(studentId, assessorId)) {
+        const draft = window.draftManager.loadDraft();
+        if (confirm('You have an unsaved draft. Would you like to restore it?')) {
+            window.draftManager.restoreDraftToForm(draft);
+            return true;
+        } else {
+            window.draftManager.clearDraft();
+        }
+    }
+    return false;
+}
+
+// Setup debounced auto-save for current student
+function setupDebouncedAutoSave() {
+    if (!State.currentStudent || !State.currentAssessor) return;
+
+    if (window.draftManager) {
+        window.draftManager.removeFormListeners();
+        window.draftManager.setupFormListeners(
+            State.currentStudent.student_id,
+            State.currentAssessor.raw_id,
+            getCurrentFormData
+        );
+    }
+}
+
+// Clean up auto-save
+function cleanupAutoSave() {
+    if (window.draftManager) {
+        window.draftManager.removeFormListeners();
+    }
+}
+
 // ==============================
 // Utility Functions
 // ==============================
@@ -83,6 +137,15 @@ function escapeHtml(str) {
 function formatDate(dateString) {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('en-GB');
+}
+
+function formatDateRange(startDate, endDate) {
+    if (!startDate && !endDate) return '—';
+    if (startDate && endDate) {
+        return `${formatDate(startDate)} to ${formatDate(endDate)}`;
+    }
+    if (startDate) return `${formatDate(startDate)} onwards`;
+    return `Until ${formatDate(endDate)}`;
 }
 
 function generateEvaluationKey(assessorId, studentId) {
@@ -106,14 +169,13 @@ async function loadDataFromAPI() {
         console.log('Assessors received:', assessors);
         console.log('Users received:', users);
 
-        // Ensure we have arrays
         const studentsArray = Array.isArray(students) ? students : [];
         const assessorsArray = Array.isArray(assessors) ? assessors : [];
         const usersArray = Array.isArray(users) ? users : [];
 
-        // Transform students data
         State.studentList = studentsArray.map(s => ({
-            id: s.student_id?.toString() || '',
+            id: s.formatted_id || 'S' + s.student_id,
+            raw_id: s.student_id,
             name: s.name || '',
             programme: s.programme || '',
             company: s.company_name || '',
@@ -129,9 +191,9 @@ async function loadDataFromAPI() {
             assigned_assessor_id: s.assigned_assessor
         }));
 
-        // Transform assessors data
         State.assessorList = assessorsArray.map(a => ({
-            id: a.assessor_id?.toString() || '',
+            id: a.formatted_id || 'A' + a.assessor_id,
+            raw_id: a.assessor_id,
             name: a.username || '',
             role: a.role || 'Assessor',
             dept: a.department || '',
@@ -142,8 +204,8 @@ async function loadDataFromAPI() {
             user_id: a.user_id
         }));
 
-        // Transform users/accounts data
         State.accountList = usersArray.map(u => ({
+            id: u.formatted_id || 'U' + u.user_id,
             username: u.username || '',
             email: u.email || '',
             password: '••••••',
@@ -164,15 +226,6 @@ async function loadDataFromAPI() {
         State.accountList = [];
         return false;
     }
-}
-
-function formatDateRange(startDate, endDate) {
-    if (!startDate && !endDate) return '—';
-    if (startDate && endDate) {
-        return `${formatDate(startDate)} to ${formatDate(endDate)}`;
-    }
-    if (startDate) return `${formatDate(startDate)} onwards`;
-    return `Until ${formatDate(endDate)}`;
 }
 
 function loadEvaluationsFromStorage() {
@@ -206,8 +259,7 @@ function saveStudentEvaluation(studentId, assessorId, evaluationData) {
     };
     saveEvaluationsToStorage();
 
-    // Update student status in the local state
-    const student = State.studentList.find(s => s.id === studentId);
+    const student = State.studentList.find(s => s.student_id === studentId);
     if (student && student.status !== 'Evaluated') {
         student.status = 'Evaluated';
     }
@@ -259,20 +311,20 @@ function renderAssessorDropdown() {
     const options = ['<option value="">-- Select an assessor --</option>'];
     for (const assessor of State.assessorList) {
         const studentCount = assessor.assignedStudentIds?.length || 0;
-        options.push(`<option value="${assessor.id}">${escapeHtml(assessor.name)} (${studentCount} students) - ${escapeHtml(assessor.dept)}</option>`);
+        options.push(`<option value="${assessor.raw_id}">${escapeHtml(assessor.name)} (${studentCount} students) - ${escapeHtml(assessor.dept)}</option>`);
     }
     DOM.assessorDropdown.innerHTML = options.join('');
 }
 
 function displayStudentsForAssessor(assessorId) {
-    const assessor = State.assessorList.find(a => a.id === assessorId);
+    const assessor = State.assessorList.find(a => a.raw_id == assessorId);
     if (!assessor) {
         DOM.studentsSection.style.display = 'none';
         return;
     }
 
     const assignedStudents = (assessor.assignedStudentIds || [])
-        .map(id => State.studentList.find(s => s.id === id))
+        .map(id => State.studentList.find(s => s.student_id == id))
         .filter(s => s);
 
     if (!assignedStudents.length) {
@@ -283,7 +335,7 @@ function displayStudentsForAssessor(assessorId) {
     }
 
     const studentsHtml = assignedStudents.map(student => {
-        const hasEvaluation = Object.values(State.assessorEvaluations).some(e => e.studentId === student.id);
+        const hasEvaluation = getStudentEvaluation(student.student_id, assessor.raw_id);
         let statusIcon = '⏳';
         let statusText = 'Pending';
         let statusColor = '#ff9800';
@@ -299,7 +351,7 @@ function displayStudentsForAssessor(assessorId) {
         }
 
         return `
-            <div class="student-chip" data-student-id="${student.id}" data-student-name="${escapeHtml(student.name)}" data-assessor-id="${assessor.id}">
+            <div class="student-chip" data-student-id="${student.student_id}" data-student-name="${escapeHtml(student.name)}" data-assessor-id="${assessor.raw_id}">
                 ${statusIcon} ${escapeHtml(student.name)} (${student.id})
                 <span style="font-size: 12px; color: ${statusColor};"> ${statusText}</span>
             </div>
@@ -314,9 +366,9 @@ function displayStudentsForAssessor(assessorId) {
             document.querySelectorAll('.student-chip').forEach(c => c.classList.remove('active-student'));
             chip.classList.add('active-student');
             displayStudentMarks(
-                chip.dataset.studentId,
+                parseInt(chip.dataset.studentId),
                 chip.dataset.studentName,
-                chip.dataset.assessorId
+                parseInt(chip.dataset.assessorId)
             );
         });
     });
@@ -341,6 +393,9 @@ function displayStudentMarks(studentId, studentName, assessorId = null) {
         }
     }
 
+    const student = State.studentList.find(s => s.student_id === studentId);
+    const displayId = student ? student.id : 'S' + studentId;
+
     let studentBadge = document.getElementById('selectedStudentNameSpan');
     if (!studentBadge) {
         const panelHeader = document.querySelector('.panel-header');
@@ -351,7 +406,7 @@ function displayStudentMarks(studentId, studentName, assessorId = null) {
             panelHeader.appendChild(studentBadge);
         }
     }
-    if (studentBadge) studentBadge.textContent = `${studentName} (${studentId})`;
+    if (studentBadge) studentBadge.textContent = `${studentName} (${displayId})`;
 
     DOM.editActionContainer.style.display = 'none';
 
@@ -421,7 +476,7 @@ function renderStudentDropdown() {
     if (!DOM.studentDropdown || !State.currentAssessor) return;
 
     const assignedStudents = (State.currentAssessor.assignedStudentIds || [])
-        .map(id => State.studentList.find(s => s.id === id))
+        .map(id => State.studentList.find(s => s.student_id == id))
         .filter(s => s);
 
     if (!assignedStudents.length) {
@@ -431,9 +486,9 @@ function renderStudentDropdown() {
 
     const options = ['<option value="">-- Select a student --</option>'];
     for (const student of assignedStudents) {
-        const isEvaluated = !!getStudentEvaluation(student.id, State.currentAssessor.id);
+        const isEvaluated = !!getStudentEvaluation(student.student_id, State.currentAssessor.raw_id);
         const status = isEvaluated ? '✅ Evaluated' : '⏳ Pending';
-        options.push(`<option value="${student.id}" data-status="${isEvaluated}">${escapeHtml(student.name)} (${student.id}) - ${status}</option>`);
+        options.push(`<option value="${student.student_id}" data-status="${isEvaluated}">${escapeHtml(student.name)} (${student.id}) - ${status}</option>`);
     }
     DOM.studentDropdown.innerHTML = options.join('');
 }
@@ -512,26 +567,40 @@ function displayExistingEvaluation(evaluation) {
     DOM.marksPanel.style.display = 'block';
 }
 
+// ==================================
+// Main Assessor Functions with Draft Support
+// ==================================
 function handleStudentSelection() {
-    const studentId = DOM.studentDropdown?.value;
-    if (!studentId) {
+    const studentRawId = DOM.studentDropdown?.value;
+    if (!studentRawId) {
         DOM.evaluationForm.style.display = 'none';
         DOM.marksPanel.style.display = 'none';
+        cleanupAutoSave();
         return;
     }
 
-    State.currentStudent = State.studentList.find(s => s.id === studentId);
+    State.currentStudent = State.studentList.find(s => s.student_id == studentRawId);
     if (!State.currentStudent) return;
 
-    const existingEvaluation = getStudentEvaluation(studentId, State.currentAssessor.id);
+    const existingEvaluation = getStudentEvaluation(State.currentStudent.student_id, State.currentAssessor.raw_id);
 
     if (existingEvaluation && !State.isEditMode) {
         DOM.evaluationForm.style.display = 'none';
         displayExistingEvaluation(existingEvaluation);
+        cleanupAutoSave();
+        if (window.draftManager) window.draftManager.clearDraft();
     } else {
         DOM.marksPanel.style.display = 'none';
         DOM.evaluationForm.style.display = 'block';
         renderEvaluationForm(State.isEditMode ? existingEvaluation : null);
+
+        // Check for draft and restore if available
+        checkAndRestoreDraft(State.currentStudent.student_id, State.currentAssessor.raw_id);
+
+        // Setup debounced auto-save after form is rendered
+        setTimeout(() => {
+            setupDebouncedAutoSave();
+        }, 100);
     }
 }
 
@@ -553,9 +622,15 @@ function submitEvaluation() {
     }
 
     const evaluationData = collectEvaluationData();
-    saveStudentEvaluation(State.currentStudent.id, State.currentAssessor.id, evaluationData);
+    saveStudentEvaluation(State.currentStudent.student_id, State.currentAssessor.raw_id, evaluationData);
 
     alert(`Evaluation for ${State.currentStudent.name} submitted successfully!\nTotal Score: ${evaluationData.weightedTotal.toFixed(1)}%`);
+
+    if (window.draftManager) {
+        window.draftManager.clearDraft();
+        window.draftManager.showIndicator('✓ Evaluation submitted, draft cleared', '#4caf50');
+    }
+    cleanupAutoSave();
 
     State.isEditMode = false;
     renderStudentDropdown();
@@ -569,15 +644,20 @@ function cancelEvaluation() {
     if (DOM.studentDropdown) DOM.studentDropdown.value = '';
     DOM.evaluationForm.style.display = 'none';
     DOM.marksPanel.style.display = 'none';
+    cleanupAutoSave();
 }
 
 function editEvaluation() {
     State.isEditMode = true;
-    const existingEvaluation = getStudentEvaluation(State.currentStudent.id, State.currentAssessor.id);
+    const existingEvaluation = getStudentEvaluation(State.currentStudent.student_id, State.currentAssessor.raw_id);
     if (existingEvaluation) {
         DOM.marksPanel.style.display = 'none';
         DOM.evaluationForm.style.display = 'block';
         renderEvaluationForm(existingEvaluation);
+        cleanupAutoSave();
+        setTimeout(() => {
+            setupDebouncedAutoSave();
+        }, 100);
     }
 }
 
@@ -683,19 +763,22 @@ async function checkExistingLogin() {
 }
 
 function handlePendingEvaluationRedirect(assessor) {
-    const pendingStudentId = sessionStorage.getItem('evalStudentId');
-    const pendingAssessorId = sessionStorage.getItem('evalAssessorId');
+    const pendingStudentRawId = sessionStorage.getItem('evalStudentId');
+    const pendingAssessorRawId = sessionStorage.getItem('evalAssessorId');
 
-    if (pendingStudentId && pendingAssessorId && pendingAssessorId === assessor.id) {
-        State.currentStudent = State.studentList.find(s => s.id === pendingStudentId);
+    if (pendingStudentRawId && pendingAssessorRawId && pendingAssessorRawId == assessor.raw_id) {
+        State.currentStudent = State.studentList.find(s => s.student_id == pendingStudentRawId);
         if (State.currentStudent) {
             setTimeout(() => {
-                DOM.studentDropdown.value = pendingStudentId;
-                const existingEvaluation = getStudentEvaluation(pendingStudentId, assessor.id);
+                DOM.studentDropdown.value = pendingStudentRawId;
+                const existingEvaluation = getStudentEvaluation(parseInt(pendingStudentRawId), assessor.raw_id);
                 State.isEditMode = !!existingEvaluation;
                 DOM.evaluationForm.style.display = 'block';
                 DOM.marksPanel.style.display = 'none';
                 renderEvaluationForm(existingEvaluation);
+                setTimeout(() => {
+                    setupDebouncedAutoSave();
+                }, 100);
             }, 100);
         }
         sessionStorage.removeItem('evalStudentId');
@@ -705,16 +788,16 @@ function handlePendingEvaluationRedirect(assessor) {
 
 function handleViewModeRedirect() {
     const viewMode = sessionStorage.getItem('viewMode');
-    const viewStudentId = sessionStorage.getItem('viewStudentId');
-    const viewAssessorId = sessionStorage.getItem('viewAssessorId');
+    const viewStudentRawId = sessionStorage.getItem('viewStudentId');
+    const viewAssessorRawId = sessionStorage.getItem('viewAssessorId');
 
-    if (viewMode === 'true' && viewStudentId && viewAssessorId) {
-        const student = State.studentList.find(s => s.id === viewStudentId);
-        const evaluation = getStudentEvaluation(viewStudentId, viewAssessorId);
+    if (viewMode === 'true' && viewStudentRawId && viewAssessorRawId) {
+        const student = State.studentList.find(s => s.student_id == viewStudentRawId);
+        const evaluation = getStudentEvaluation(parseInt(viewStudentRawId), parseInt(viewAssessorRawId));
 
         if (student && evaluation) {
             setTimeout(() => {
-                DOM.studentDropdown.value = viewStudentId;
+                DOM.studentDropdown.value = viewStudentRawId;
                 showEvaluationPage();
                 DOM.evaluationForm.style.display = 'none';
                 displayExistingEvaluation(evaluation);
@@ -781,6 +864,7 @@ function setupLoginButton() {
             if (DOM.wrapper) DOM.wrapper.classList.remove('active-popup');
             clearLoginState();
             showAccessDenied();
+            cleanupAutoSave();
             alert('Logged out successfully');
         } else {
             if (DOM.wrapper) DOM.wrapper.classList.add('active-popup');
@@ -806,7 +890,7 @@ function setupStorageListener() {
         if (e.key === STORAGE_KEYS.EVALUATIONS) {
             loadEvaluationsFromStorage();
             if (State.userRole === 'assessor' && State.currentStudent) {
-                const existingEvaluation = getStudentEvaluation(State.currentStudent.id, State.currentAssessor.id);
+                const existingEvaluation = getStudentEvaluation(State.currentStudent.student_id, State.currentAssessor.raw_id);
                 if (existingEvaluation && !State.isEditMode) {
                     DOM.evaluationForm.style.display = 'none';
                     displayExistingEvaluation(existingEvaluation);

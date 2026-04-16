@@ -10,6 +10,281 @@ let selectedItem = { type: null, id: null, data: null };
 let studentProgressNotes = {};
 let actualPasswords = {};
 
+// Get global references safely
+const globalSmartSearch = (typeof smartSearch !== 'undefined') ? smartSearch : (window.smartSearch || null);
+const globalCsvExporter = (typeof csvExporter !== 'undefined') ? csvExporter : (window.csvExporter || null);
+const globalCreateExportButton = (typeof createExportButton !== 'undefined') ? createExportButton : (window.createExportButton || null);
+
+// ============================================
+// SMART SEARCH INTEGRATION
+// ============================================
+
+// Enhanced render with smart search
+function renderAdminAccountsWithSmartSearch() {
+    const searchTerm = document.getElementById('searchAccounts')?.value || '';
+    const searchFields = ['username', 'email', 'userRole', 'contact'];
+
+    // Use globalSmartSearch if available
+    const searcher = globalSmartSearch;
+
+    let filtered = accountsList;
+    if (searchTerm && searcher) {
+        filtered = searcher.search(accountsList, searchTerm, searchFields);
+    }
+
+    const tbody = document.getElementById('accountsTableBody');
+    if (!tbody) return;
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: #888;">No accounts found matching "${escapeHtml(searchTerm)}"</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(acc => `
+        <tr data-type="account" data-id="${escapeHtml(acc.email)}">
+            <td>${searcher ? searcher.highlightMatch(acc.username, searchTerm) : escapeHtml(acc.username)}</td>
+            <td>${searcher ? searcher.highlightMatch(acc.email, searchTerm) : escapeHtml(acc.email)}</td>
+            <td>${searcher ? searcher.highlightMatch(acc.userRole, searchTerm) : escapeHtml(acc.userRole)}</td>
+            <td>${searcher ? searcher.highlightMatch(acc.contact || '—', searchTerm) : escapeHtml(acc.contact || '—')}</td>
+            <td>${escapeHtml(acc.createdAt || '—')}</td>
+            <td class="action-cell">
+                <button class="edit-row-btn" data-type="account" data-id="${escapeHtml(acc.email)}">Edit</button>
+                <button class="delete-row-btn" data-type="account" data-id="${escapeHtml(acc.email)}">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+
+    setTimeout(() => setTableHeight('accountsScrollableTable'), 50);
+}
+
+function renderAdminStudentsWithSmartSearch() {
+    const searchTerm = document.getElementById('searchStudents')?.value || '';
+    const statusFilter = document.getElementById('filterStudentStatus')?.value || '';
+    const assessorFilter = document.getElementById('filterStudentAssessor')?.value || '';
+    const programmeFilter = document.getElementById('filterStudentProgramme')?.value || '';
+
+    const searchFields = ['name', 'id', 'email', 'company', 'programme'];
+
+    // Use globalSmartSearch if available
+    const searcher = globalSmartSearch;
+
+    let filtered = studentsList;
+
+    // Apply smart search
+    if (searchTerm && searcher) {
+        filtered = searcher.search(filtered, searchTerm, searchFields);
+    }
+
+    // Apply filters
+    filtered = filtered.filter(s => {
+        if (statusFilter && s.status !== statusFilter) return false;
+        if (assessorFilter && s.assigned_assessor !== assessorFilter) return false;
+        if (programmeFilter && s.programme !== programmeFilter) return false;
+        return true;
+    });
+
+    const tbody = document.getElementById('studentsTableBody');
+    if (!tbody) return;
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: #888;">No students found matching "${escapeHtml(searchTerm)}"</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(s => `
+        <tr data-type="student" data-id="${escapeHtml(s.id)}">
+            <td>${searcher ? searcher.highlightMatch(s.id, searchTerm) : escapeHtml(s.id)}</td>
+            <td>${searcher ? searcher.highlightMatch(s.name, searchTerm) : escapeHtml(s.name)}</td>
+            <td>${searcher ? searcher.highlightMatch(s.programme || '—', searchTerm) : escapeHtml(s.programme || '—')}</td>
+            <td>${searcher ? searcher.highlightMatch(s.company || '—', searchTerm) : escapeHtml(s.company || '—')}</td>
+            <td><span class="status-badge status-${s.status?.toLowerCase()}">${escapeHtml(s.status || 'Pending')}</span></td>
+            <td class="action-cell">
+                <button class="edit-row-btn" data-type="student" data-id="${escapeHtml(s.id)}">Edit</button>
+                <button class="delete-row-btn" data-type="student" data-id="${escapeHtml(s.id)}">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+
+    setTimeout(() => setTableHeight('studentsScrollableTable'), 50);
+}
+
+function renderAdminAssessorsWithSmartSearch() {
+    const searchTerm = document.getElementById('searchAssessors')?.value || '';
+    const searchFields = ['name', 'id', 'email', 'dept', 'role'];
+
+    // Use globalSmartSearch if available
+    const searcher = globalSmartSearch;
+
+    let filtered = assessorsList;
+    if (searchTerm && searcher) {
+        filtered = searcher.search(assessorsList, searchTerm, searchFields);
+    }
+
+    const tbody = document.getElementById('assessorsTableBody');
+    if (!tbody) return;
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: #888;">No assessors found matching "${escapeHtml(searchTerm)}"</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(a => `
+        <tr data-type="assessor" data-id="${escapeHtml(a.id)}">
+            <td>${searcher ? searcher.highlightMatch(a.id, searchTerm) : escapeHtml(a.id)}</td>
+            <td>${searcher ? searcher.highlightMatch(a.name, searchTerm) : escapeHtml(a.name)}</td>
+            <td>${searcher ? searcher.highlightMatch(a.dept || '—', searchTerm) : escapeHtml(a.dept || '—')}</td>
+            <td>${searcher ? searcher.highlightMatch(a.email, searchTerm) : escapeHtml(a.email)}</td>
+            <td>${(a.assignedStudentIds || []).length} assigned</td>
+            <td class="action-cell">
+                <button class="edit-row-btn" data-type="assessor" data-id="${escapeHtml(a.id)}">Edit</button>
+                <button class="delete-row-btn" data-type="assessor" data-id="${escapeHtml(a.id)}">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+
+    setTimeout(() => setTableHeight('assessorsScrollableTable'), 50);
+}
+
+// Add debounced search event listeners
+function setupSmartSearchListeners() {
+    const searcher = globalSmartSearch;
+    if (!searcher) {
+        console.warn('SmartSearch not available');
+        return;
+    }
+
+    const searchAccounts = document.getElementById('searchAccounts');
+    const searchStudents = document.getElementById('searchStudents');
+    const searchAssessors = document.getElementById('searchAssessors');
+
+    if (searchAccounts) {
+        searchAccounts.addEventListener('input', () => {
+            searcher.debouncedSearch(() => renderAdminAccounts());
+        });
+    }
+
+    if (searchStudents) {
+        searchStudents.addEventListener('input', () => {
+            searcher.debouncedSearch(() => renderAdminStudents());
+        });
+    }
+
+    if (searchAssessors) {
+        searchAssessors.addEventListener('input', () => {
+            searcher.debouncedSearch(() => renderAdminAssessors());
+        });
+    }
+}
+
+// ============================================
+// CSV EXPORT INTEGRATION
+// ============================================
+
+function addExportButtonsToList() {
+    // Check if createExportButton is available
+    const exportBtnMaker = globalCreateExportButton;
+    if (!exportBtnMaker) {
+        console.warn('createExportButton not available yet, will retry...');
+        setTimeout(addExportButtonsToList, 500);
+        return;
+    }
+
+    const accountsFilterGroup = document.querySelector('#accountsScrollableTable')?.closest('.table-card')?.querySelector('.filter-group');
+    if (accountsFilterGroup && !accountsFilterGroup.querySelector('.export-btn')) {
+        const exportBtn = exportBtnMaker(() => exportAccountsToCSV(), '📊 Export CSV');
+        exportBtn.style.marginLeft = 'auto';
+        accountsFilterGroup.appendChild(exportBtn);
+    }
+
+    const studentsFilterGroup = document.querySelector('#studentsScrollableTable')?.closest('.table-card')?.querySelector('.filter-group');
+    if (studentsFilterGroup && !studentsFilterGroup.querySelector('.export-btn')) {
+        const exportBtn = exportBtnMaker(() => exportStudentsToCSV(), '📊 Export CSV');
+        studentsFilterGroup.appendChild(exportBtn);
+    }
+
+    const assessorsFilterGroup = document.querySelector('#assessorsScrollableTable')?.closest('.table-card')?.querySelector('.filter-group');
+    if (assessorsFilterGroup && !assessorsFilterGroup.querySelector('.export-btn')) {
+        const exportBtn = exportBtnMaker(() => exportAssessorsToCSV(), '📊 Export CSV');
+        assessorsFilterGroup.appendChild(exportBtn);
+    }
+}
+
+function exportAccountsToCSV() {
+    const exporter = globalCsvExporter;
+    if (!exporter) {
+        alert('Export function not available');
+        return;
+    }
+
+    const columns = [
+        { key: 'username', label: 'Username' },
+        { key: 'email', label: 'Email' },
+        { key: 'userRole', label: 'Role' },
+        { key: 'contact', label: 'Contact' },
+        { key: 'createdAt', label: 'Created At', isDate: true }
+    ];
+
+    exporter.exportToCSV(accountsList, 'accounts_export', columns);
+}
+
+function exportStudentsToCSV() {
+    const exporter = globalCsvExporter;
+    if (!exporter) {
+        alert('Export function not available');
+        return;
+    }
+
+    // Get current filtered students
+    const searchTerm = document.getElementById('searchStudents')?.value || '';
+    const statusFilter = document.getElementById('filterStudentStatus')?.value || '';
+    const assessorFilter = document.getElementById('filterStudentAssessor')?.value || '';
+    const programmeFilter = document.getElementById('filterStudentProgramme')?.value || '';
+
+    let filtered = [...studentsList];
+
+    const searcher = globalSmartSearch;
+    if (searchTerm && searcher) {
+        filtered = searcher.search(filtered, searchTerm, ['name', 'id', 'email', 'company', 'programme']);
+    }
+    if (statusFilter) filtered = filtered.filter(s => s.status === statusFilter);
+    if (assessorFilter) filtered = filtered.filter(s => s.assigned_assessor === assessorFilter);
+    if (programmeFilter) filtered = filtered.filter(s => s.programme === programmeFilter);
+
+    const columns = [
+        { key: 'id', label: 'Student ID' },
+        { key: 'name', label: 'Name' },
+        { key: 'programme', label: 'Programme' },
+        { key: 'company', label: 'Company' },
+        { key: 'year', label: 'Enrollment Year' },
+        { key: 'email', label: 'Email' },
+        { key: 'contact', label: 'Contact' },
+        { key: 'status', label: 'Status' },
+        { key: 'assigned_assessor', label: 'Assigned Assessor' }
+    ];
+
+    exporter.exportToCSV(filtered, 'students_export', columns);
+}
+
+function exportAssessorsToCSV() {
+    const exporter = globalCsvExporter;
+    if (!exporter) {
+        alert('Export function not available');
+        return;
+    }
+
+    const columns = [
+        { key: 'id', label: 'Assessor ID' },
+        { key: 'name', label: 'Name' },
+        { key: 'role', label: 'Role' },
+        { key: 'dept', label: 'Department' },
+        { key: 'email', label: 'Email' },
+        { key: 'contact', label: 'Contact' },
+        { key: 'assignedStudentIds', label: 'Assigned Students Count' }
+    ];
+
+    exporter.exportToCSV(assessorsList, 'assessors_export', columns);
+}
+
 // ============================================
 // STORAGE HELPERS (for notes only)
 // ============================================
@@ -45,14 +320,14 @@ async function loadDataFromAPI() {
         console.log('Assessors received:', assessors);
         console.log('Users received:', users);
 
-        // Ensure we have arrays
         const studentsArray = Array.isArray(students) ? students : [];
         const assessorsArray = Array.isArray(assessors) ? assessors : [];
         const usersArray = Array.isArray(users) ? users : [];
 
-        // Transform students data
+        // Transform students data - USE formatted_id from API
         studentsList = studentsArray.map(s => ({
-            id: s.student_id?.toString() || '',
+            id: s.formatted_id || 'S' + s.student_id,
+            raw_id: s.student_id,
             name: s.name || '',
             programme: s.programme || '',
             company: s.company_name || '',
@@ -68,9 +343,10 @@ async function loadDataFromAPI() {
             assigned_assessor_id: s.assigned_assessor
         }));
 
-        // Transform assessors data
+        // Transform assessors data - USE formatted_id from API
         assessorsList = assessorsArray.map(a => ({
-            id: a.assessor_id?.toString() || '',
+            id: a.formatted_id || 'A' + a.assessor_id,
+            raw_id: a.assessor_id,
             name: a.username || '',
             role: a.role || 'Assessor',
             dept: a.department || '',
@@ -81,7 +357,7 @@ async function loadDataFromAPI() {
             user_id: a.user_id
         }));
 
-        // Transform users/accounts data
+        // Transform users/accounts data - USE formatted_id from API
         accountsList = usersArray.map(u => {
             let displayPassword = actualPasswords[u.user_id];
             if (!displayPassword) {
@@ -90,6 +366,7 @@ async function loadDataFromAPI() {
             }
 
             return {
+                id: u.formatted_id || 'U' + u.user_id,
                 username: u.username || '',
                 email: u.email || '',
                 password: displayPassword,
@@ -124,6 +401,25 @@ function loadStoredPasswords() {
 
 function saveStoredPasswords() {
     localStorage.setItem('accountPasswords', JSON.stringify(actualPasswords));
+}
+
+// ============================================
+// VALIDATION FUNCTIONS
+// ============================================
+
+function validateEmail(email) {
+    const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return pattern.test(email);
+}
+
+function validateContact(contact) {
+    const pattern = /^\d{3}-\d{3}-\d{4}$/;
+    return pattern.test(contact);
+}
+
+function validateYear(year) {
+    const currentYear = new Date().getFullYear();
+    return year >= 2000 && year <= currentYear;
 }
 
 // ============================================
@@ -181,91 +477,15 @@ function setTableHeight(tableId) {
 // RENDER FUNCTIONS - ADMIN
 // ============================================
 function renderAdminAccounts() {
-    const searchTerm = document.getElementById('searchAccounts')?.value.toLowerCase() || '';
-    const filtered = accountsList.filter(acc =>
-        acc.username.toLowerCase().includes(searchTerm) ||
-        acc.email.toLowerCase().includes(searchTerm)
-    );
-
-    const tbody = document.getElementById('accountsTableBody');
-    if (!tbody) return;
-
-    tbody.innerHTML = filtered.map(acc => `
-        <tr data-type="account" data-id="${escapeHtml(acc.email)}">
-            <td>${escapeHtml(acc.username)}</td>
-            <td>${escapeHtml(acc.email)}</td>
-            <td>${escapeHtml(acc.userRole)}</td>
-            <td>${escapeHtml(acc.contact || '—')}</td>
-            <td>${escapeHtml(acc.createdAt || '—')}</td>
-            <td class="action-cell">
-                <button class="edit-row-btn" data-type="account" data-id="${escapeHtml(acc.email)}">Edit</button>
-                <button class="delete-row-btn" data-type="account" data-id="${escapeHtml(acc.email)}">Delete</button>
-            </td>
-        </tr>
-    `).join('');
-
-    const container = tbody.closest('.scrollable-table');
-    if (container?.id) setTimeout(() => setTableHeight(container.id), 50);
+    renderAdminAccountsWithSmartSearch();
 }
 
 function renderAdminStudents() {
-    const searchTerm = document.getElementById('searchStudents')?.value.toLowerCase() || '';
-    const statusFilter = document.getElementById('filterStudentStatus')?.value || '';
-    const assessorFilter = document.getElementById('filterStudentAssessor')?.value || '';
-    const programmeFilter = document.getElementById('filterStudentProgramme')?.value || '';
-
-    const filtered = studentsList.filter(s =>
-        (s.name.toLowerCase().includes(searchTerm) || s.id.toLowerCase().includes(searchTerm)) &&
-        (statusFilter === '' || s.status === statusFilter) &&
-        (assessorFilter === '' || s.assigned_assessor === assessorFilter) &&
-        (programmeFilter === '' || (s.programme && s.programme.toLowerCase().includes(programmeFilter.toLowerCase())))
-    );
-
-    const tbody = document.getElementById('studentsTableBody');
-    if (!tbody) return;
-
-    tbody.innerHTML = filtered.map(s => `
-        <tr data-type="student" data-id="${escapeHtml(s.id)}">
-            <td>${escapeHtml(s.id)}</td>
-            <td>${escapeHtml(s.name)}</td>
-            <td>${escapeHtml(s.programme || '—')}</td>
-            <td>${escapeHtml(s.company || '—')}</td>
-            <td><span class="status-badge status-${s.status?.toLowerCase()}">${escapeHtml(s.status || 'Pending')}</span></td>
-            <td class="action-cell">
-                <button class="edit-row-btn" data-type="student" data-id="${escapeHtml(s.id)}">Edit</button>
-                <button class="delete-row-btn" data-type="student" data-id="${escapeHtml(s.id)}">Delete</button>
-            </td>
-        </tr>
-    `).join('');
-
-    setTimeout(() => setTableHeight('studentsScrollableTable'), 50);
+    renderAdminStudentsWithSmartSearch();
 }
 
 function renderAdminAssessors() {
-    const searchTerm = document.getElementById('searchAssessors')?.value.toLowerCase() || '';
-    const filtered = assessorsList.filter(a =>
-        a.name.toLowerCase().includes(searchTerm) || a.id.toLowerCase().includes(searchTerm)
-    );
-
-    const tbody = document.getElementById('assessorsTableBody');
-    if (!tbody) return;
-
-    tbody.innerHTML = filtered.map(a => `
-        <tr data-type="assessor" data-id="${escapeHtml(a.id)}">
-            <td>${escapeHtml(a.id)}</td>
-            <td>${escapeHtml(a.name)}</td>
-            <td>${escapeHtml(a.dept || '—')}</td>
-            <td>${escapeHtml(a.email)}</td>
-            <td>${(a.assignedStudentIds || []).length} assigned</td>
-            <td class="action-cell">
-                <button class="edit-row-btn" data-type="assessor" data-id="${escapeHtml(a.id)}">Edit</button>
-                <button class="delete-row-btn" data-type="assessor" data-id="${escapeHtml(a.id)}">Delete</button>
-            </td>
-        </tr>
-    `).join('');
-
-    const container = tbody.closest('.scrollable-table');
-    if (container?.id) setTimeout(() => setTableHeight(container.id), 50);
+    renderAdminAssessorsWithSmartSearch();
 }
 
 // ============================================
@@ -280,40 +500,76 @@ function renderAssignedStudents() {
     document.getElementById('assessorNameDisplay').innerText = assessor.name;
 
     const assignedIds = assessor.assignedStudentIds || [];
-    let assigned = studentsList.filter(s => assignedIds.includes(s.id));
+    let assigned = studentsList.filter(s => assignedIds.includes(s.raw_id?.toString()));
 
-    const searchTerm = document.getElementById('searchAssignedStudents')?.value.toLowerCase() || '';
+    // Get search term and filters
+    const searchTerm = document.getElementById('searchAssignedStudents')?.value || '';
     const statusFilter = document.getElementById('filterAssignedStatus')?.value || '';
     const programmeFilter = document.getElementById('filterAssignedProgramme')?.value || '';
 
-    assigned = assigned.filter(s =>
-        (s.name.toLowerCase().includes(searchTerm) || s.id.toLowerCase().includes(searchTerm)) &&
-        (statusFilter === '' || s.status === statusFilter) &&
-        (programmeFilter === '' || (s.programme && s.programme.toLowerCase().includes(programmeFilter.toLowerCase())))
-    );
+    // Use smart search if available
+    const searcher = window.smartSearch;
+
+    // Apply smart search
+    if (searchTerm && searcher) {
+        const searchFields = ['name', 'id', 'email', 'company', 'programme'];
+        assigned = searcher.search(assigned, searchTerm, searchFields);
+    }
+
+    // Apply filters
+    assigned = assigned.filter(s => {
+        if (statusFilter && s.status !== statusFilter) return false;
+        if (programmeFilter && (s.programme || '') !== programmeFilter) return false;
+        return true;
+    });
 
     const tbody = document.getElementById('assignedStudentsTableBody');
     if (!tbody) return;
 
-    tbody.innerHTML = assigned.map(s => `
-        <tr data-type="student" data-id="${escapeHtml(s.id)}" data-assessor-id="${escapeHtml(assessor.id)}">
-            <td>${escapeHtml(s.id)}</td>
-            <td>${escapeHtml(s.name)}</td>
-            <td>${escapeHtml(s.programme || '—')}</td>
-            <td>${escapeHtml(s.company || '—')}</td>
-            <td>${escapeHtml(s.internshipPeriod || '—')}</td>
-            <td><span class="status-badge status-${s.status?.toLowerCase()}">${escapeHtml(s.status || 'Pending')}</span></td>
-        </tr>
-    `).join('');
+    if (assigned.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: #888;">No assigned students found matching "${escapeHtml(searchTerm)}"</td></tr>`;
+        if (document.getElementById('assignedStudentsScrollableTable')) {
+            setTimeout(() => setTableHeight('assignedStudentsScrollableTable'), 50);
+        }
+        return;
+    }
 
-    const container = tbody.closest('.scrollable-table');
-    if (container?.id) setTimeout(() => setTableHeight(container.id), 50);
+    // Render rows with smart search highlighting
+    tbody.innerHTML = assigned.map(s => {
+        let nameHtml = escapeHtml(s.name);
+        let idHtml = escapeHtml(s.id);
+        let programmeHtml = escapeHtml(s.programme || '—');
+        let companyHtml = escapeHtml(s.company || '—');
+
+        // Apply highlighting if smart search is available
+        if (searcher && searchTerm) {
+            nameHtml = searcher.highlightMatch(s.name, searchTerm);
+            idHtml = searcher.highlightMatch(s.id, searchTerm);
+            programmeHtml = searcher.highlightMatch(s.programme || '—', searchTerm);
+            companyHtml = searcher.highlightMatch(s.company || '—', searchTerm);
+        }
+
+        return `
+            <tr data-type="student" data-id="${escapeHtml(s.id)}" data-assessor-id="${escapeHtml(assessor.id)}">
+                <td>${idHtml}</td>
+                <td>${nameHtml}</td>
+                <td>${programmeHtml}</td>
+                <td>${companyHtml}</td>
+                <td>${escapeHtml(s.internshipPeriod || '—')}</td>
+                <td><span class="status-badge status-${s.status?.toLowerCase()}">${escapeHtml(s.status || 'Pending')}</span></td>
+            </tr>
+        `;
+    }).join('');
+
+    const container = document.getElementById('assignedStudentsScrollableTable');
+    if (container) setTimeout(() => setTableHeight('assignedStudentsScrollableTable'), 50);
 }
 
 // ============================================
 // FILTER DROPDOWNS
 // ============================================
 function populateFilterDropdowns() {
+    // For admin view - assessor filter
     const assessorSelect = document.getElementById('filterStudentAssessor');
     if (assessorSelect) {
         const uniqueAssessors = [...new Set(studentsList.map(s => s.assigned_assessor).filter(Boolean))];
@@ -321,11 +577,13 @@ function populateFilterDropdowns() {
             uniqueAssessors.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
     }
 
+    // For both admin and assessor - programme filters
     const programmeSources = ['filterStudentProgramme', 'filterAssignedProgramme'];
+    const uniqueProgrammes = [...new Set(studentsList.map(s => s.programme).filter(Boolean))];
+
     programmeSources.forEach(id => {
         const select = document.getElementById(id);
         if (select) {
-            const uniqueProgrammes = [...new Set(studentsList.map(s => s.programme).filter(Boolean))];
             select.innerHTML = '<option value="">All Programmes</option>' +
                 uniqueProgrammes.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
         }
@@ -407,7 +665,7 @@ function renderStudentDetails(data, extraAssessorId) {
     if (currentRole === 'assessor' && extraAssessorId) {
         const currentAssessor = assessorsList.find(a => a.email === currentUser.email);
         if (currentAssessor && currentAssessor.id === extraAssessorId) {
-            setupProgressNotes(data.id, currentAssessor.id);
+            setupProgressNotes(data.raw_id, currentAssessor.id);
         }
     }
 }
@@ -418,7 +676,9 @@ function setupProgressNotes(studentId, assessorId) {
     const saveNoteBtn = document.getElementById('saveNoteBtn');
 
     notesSection.style.display = 'block';
-    const noteKey = `${studentId}_${assessorId}`;
+    const assessor = assessorsList.find(a => a.id === assessorId);
+    const rawAssessorId = assessor ? assessor.raw_id : assessorId;
+    const noteKey = `${studentId}_${rawAssessorId}`;
     noteTextarea.value = studentProgressNotes[noteKey] || '';
     saveNoteBtn.onclick = () => {
         studentProgressNotes[noteKey] = noteTextarea.value;
@@ -431,7 +691,7 @@ function renderAssessorDetails(data) {
     document.getElementById('detailsTitle').innerText = 'Assessor Profile';
 
     const assignedStudentNames = (data.assignedStudentIds || []).map(sid => {
-        const stu = studentsList.find(s => s.id === sid);
+        const stu = studentsList.find(s => s.raw_id?.toString() === sid.toString());
         return stu ? `<span class="assigned-student-chip">${escapeHtml(stu.name)} (${stu.id})</span>` : sid;
     }).join('');
 
@@ -621,7 +881,6 @@ function setupLogin() {
         const email = document.getElementById('loginEmail').value.trim();
         const password = document.getElementById('loginPassword').value.trim();
 
-        // Use API.login() instead of localStorage comparison
         const result = await API.login(email, password);
 
         if (result.success) {
@@ -637,7 +896,6 @@ function setupLogin() {
 
             alert(`Logged in as ${result.user.username}`);
 
-            // Reload data after login
             await loadDataFromAPI();
             checkLoginState();
             form.reset();
@@ -671,19 +929,26 @@ function attachFilterEvents() {
 }
 
 function attachAssessorFilterEvents() {
-    const elements = {
-        searchAssignedStudents: () => renderAssignedStudents(),
-        filterAssignedStatus: () => renderAssignedStudents(),
-        filterAssignedProgramme: () => renderAssignedStudents()
-    };
+    const searcher = window.smartSearch;
 
-    Object.entries(elements).forEach(([id, handler]) => {
-        const el = document.getElementById(id);
-        if (el) {
-            const eventType = id.startsWith('search') ? 'input' : 'change';
-            el.addEventListener(eventType, handler);
+    const searchInput = document.getElementById('searchAssignedStudents');
+    const statusFilter = document.getElementById('filterAssignedStatus');
+    const programmeFilter = document.getElementById('filterAssignedProgramme');
+
+    const doSearch = () => renderAssignedStudents();
+
+    if (searchInput) {
+        if (searcher) {
+            searchInput.addEventListener('input', () => {
+                searcher.debouncedSearch(doSearch);
+            });
+        } else {
+            searchInput.addEventListener('input', doSearch);
         }
-    });
+    }
+
+    if (statusFilter) statusFilter.addEventListener('change', doSearch);
+    if (programmeFilter) programmeFilter.addEventListener('change', doSearch);
 }
 
 // ============================================
@@ -750,6 +1015,7 @@ function generateAccountEditForm(account) {
 function generateStudentEditForm(student) {
     const assessorOptions = ['', ...assessorsList.map(a => a.name)];
     const statusOptions = ['Pending', 'Ongoing', 'Evaluated'];
+    const programmeOptions = ['Computer Science', 'Business', 'Engineering'];
 
     let startDate = '', endDate = '';
     if (student.start_date) startDate = student.start_date;
@@ -758,18 +1024,30 @@ function generateStudentEditForm(student) {
     return `
         <div class="edit-field"><label>Student ID</label><input type="text" id="edit_student_id" value="${escapeHtml(student.id)}" readonly></div>
         <div class="edit-field"><label>Student Name</label><input type="text" id="edit_student_name" value="${escapeHtml(student.name)}"></div>
-        <div class="edit-field"><label>Programme</label><input type="text" id="edit_programme" value="${escapeHtml(student.programme || '')}"></div>
+        <div class="edit-field">
+            <label>Programme</label>
+            <select id="edit_programme">
+                <option value="">-- Select Programme --</option>
+                ${programmeOptions.map(opt => `<option value="${opt}" ${student.programme === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+            </select>
+        </div>
         <div class="edit-field"><label>Internship Company</label><input type="text" id="edit_company" value="${escapeHtml(student.company || '')}"></div>
         <div class="edit-field"><label>Enrolment Year</label><input type="text" id="edit_year" value="${escapeHtml(student.year || '')}"></div>
         <div class="edit-field"><label>Email</label><input type="email" id="edit_student_email" value="${escapeHtml(student.email || '')}"></div>
         <div class="edit-field"><label>Contact Number</label><input type="text" id="edit_student_contact" value="${escapeHtml(student.contact || '')}"></div>
         <div class="edit-field"><label>Internship Start Date</label><input type="date" id="edit_start_date" value="${startDate}"></div>
         <div class="edit-field"><label>Internship End Date</label><input type="date" id="edit_end_date" value="${endDate}"></div>
-        <div class="edit-field"><label>Status</label>
-            <select id="edit_status">${statusOptions.map(opt => `<option value="${opt}" ${student.status === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select>
+        <div class="edit-field">
+            <label>Status</label>
+            <select id="edit_status">
+                ${statusOptions.map(opt => `<option value="${opt}" ${student.status === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+            </select>
         </div>
-        <div class="edit-field"><label>Assigned Assessor</label>
-            <select id="edit_assigned_assessor">${assessorOptions.map(name => `<option value="${name}" ${student.assigned_assessor === name ? 'selected' : ''}>${name || '—'}</option>`).join('')}</select>
+        <div class="edit-field">
+            <label>Assigned Assessor</label>
+            <select id="edit_assigned_assessor">
+                ${assessorOptions.map(name => `<option value="${name}" ${student.assigned_assessor === name ? 'selected' : ''}>${name || '—'}</option>`).join('')}
+            </select>
         </div>
     `;
 }
@@ -788,38 +1066,136 @@ function generateAssessorEditForm(assessor) {
 }
 
 async function saveEdit() {
-    if (currentEditType === 'account') await updateAccountFromModal();
-    else if (currentEditType === 'student') await updateStudentFromModal();
-    else if (currentEditType === 'assessor') await updateAssessorFromModal();
+    let success = false;
 
-    document.getElementById('editModal').style.display = 'none';
-
-    if (currentRole === 'administrator') {
-        renderAdminAccounts();
-        renderAdminStudents();
-        renderAdminAssessors();
-        populateFilterDropdowns();
-    } else if (currentRole === 'assessor') {
-        renderAssignedStudents();
+    try {
+        if (currentEditType === 'account') {
+            success = await updateAccountFromModal();
+        } else if (currentEditType === 'student') {
+            success = await updateStudentFromModal();
+        } else if (currentEditType === 'assessor') {
+            success = await updateAssessorFromModal();
+        }
+    } catch (error) {
+        console.error('Save error:', error);
+        alert('An error occurred while saving: ' + error.message);
+        return;
     }
 
-    attachEditButtonListeners();
-    setupRowDelegation();
-    alert('Changes saved successfully!');
+    if (success === true) {
+        document.getElementById('editModal').style.display = 'none';
+
+        if (currentRole === 'administrator') {
+            renderAdminAccounts();
+            renderAdminStudents();
+            renderAdminAssessors();
+            populateFilterDropdowns();
+        } else if (currentRole === 'assessor') {
+            renderAssignedStudents();
+        }
+
+        attachEditButtonListeners();
+        attachDeleteButtonListeners();
+        setupRowDelegation();
+    }
+}
+
+async function updateStudentFromModal() {
+    const student = studentsList.find(s => s.id === currentEditId);
+    if (!student) {
+        alert('Student not found');
+        return false;
+    }
+
+    const name = document.getElementById('edit_student_name').value;
+    const programme = document.getElementById('edit_programme').value;
+    const company = document.getElementById('edit_company').value;
+    const yearValue = document.getElementById('edit_year').value;
+    const email = document.getElementById('edit_student_email').value;
+    const contact = document.getElementById('edit_student_contact').value;
+    const status = document.getElementById('edit_status').value;
+    const newAssessorName = document.getElementById('edit_assigned_assessor').value;
+
+    if (email && !validateEmail(email)) {
+        alert('Invalid email format. Please enter a valid email address.');
+        return false;
+    }
+
+    if (contact && !validateContact(contact)) {
+        alert('Invalid contact format. Use: 012-345-6789');
+        return false;
+    }
+
+    const year = parseInt(yearValue);
+    if (isNaN(year) || !validateYear(year)) {
+        const currentYear = new Date().getFullYear();
+        alert(`Invalid enrollment year. Please enter a year between 2000 and ${currentYear + 5}`);
+        return false;
+    }
+
+    if (!programme) {
+        alert('Please select a programme');
+        return false;
+    }
+
+    const selectedAssessor = assessorsList.find(a => a.name === newAssessorName);
+    const assessorId = selectedAssessor ? parseInt(selectedAssessor.raw_id) : null;
+
+    const updatedStudent = {
+        student_id: parseInt(student.raw_id),
+        name: name,
+        programme: programme,
+        company_name: company,
+        enrollment_year: year,
+        student_email: email,
+        student_contact: contact,
+        assigned_assessor: assessorId,
+        status: status,
+        start_date: document.getElementById('edit_start_date').value || null,
+        end_date: document.getElementById('edit_end_date').value || null
+    };
+
+    const result = await API.updateStudent(updatedStudent);
+
+    if (result.success) {
+        await loadDataFromAPI();
+        alert('Student updated successfully!');
+        return true;
+    } else {
+        alert('Error updating student: ' + (result.error || 'Unknown error'));
+        return false;
+    }
 }
 
 async function updateAccountFromModal() {
     const account = accountsList.find(a => a.email === currentEditId);
-    if (!account) return;
+    if (!account) {
+        alert('Account not found');
+        return false;
+    }
 
+    const username = document.getElementById('edit_username').value;
+    const email = document.getElementById('edit_email').value;
+    const role = document.getElementById('edit_role').value;
+    const contact = document.getElementById('edit_contact').value;
     const newPassword = document.getElementById('edit_password')?.value || '';
+
+    if (!validateEmail(email)) {
+        alert('Invalid email format. Please enter a valid email address.');
+        return false;
+    }
+
+    if (contact && !validateContact(contact)) {
+        alert('Invalid contact format. Use: 012-345-6789');
+        return false;
+    }
 
     const updatedAccount = {
         user_id: account.user_id,
-        username: document.getElementById('edit_username').value,
-        email: document.getElementById('edit_email').value,
-        userRole: document.getElementById('edit_role').value,
-        contact: document.getElementById('edit_contact').value
+        username: username,
+        email: email,
+        userRole: role,
+        contact: contact
     };
 
     let passwordChanged = false;
@@ -836,79 +1212,62 @@ async function updateAccountFromModal() {
     if (result.success) {
         if (passwordChanged && newPlainPassword) {
             actualPasswords[account.user_id] = newPlainPassword;
+            localStorage.setItem(`user_password_${account.user_id}`, newPlainPassword);
             saveStoredPasswords();
             alert(`✅ Account updated successfully! New Password: ${newPlainPassword}`);
         } else {
             alert('✅ Account updated successfully!');
         }
-
         await loadDataFromAPI();
-
-        if (currentRole === 'administrator') {
-            renderAdminAccounts();
-            renderAdminStudents();
-            renderAdminAssessors();
-            populateFilterDropdowns();
-        } else if (currentRole === 'assessor') {
-            renderAssignedStudents();
-        }
-
-        document.getElementById('editModal').style.display = 'none';
+        return true;
     } else {
         alert('❌ Error updating account: ' + (result.error || 'Unknown error'));
-    }
-}
-async function updateStudentFromModal() {
-    const student = studentsList.find(s => s.id === currentEditId);
-    if (!student) return;
-
-    const newAssessorName = document.getElementById('edit_assigned_assessor').value;
-    const selectedAssessor = assessorsList.find(a => a.name === newAssessorName);
-    const assessorId = selectedAssessor ? parseInt(selectedAssessor.id) : null;
-
-    const updatedStudent = {
-        student_id: parseInt(student.id),
-        name: document.getElementById('edit_student_name').value,
-        programme: document.getElementById('edit_programme').value,
-        company_name: document.getElementById('edit_company').value,
-        enrollment_year: parseInt(document.getElementById('edit_year').value) || new Date().getFullYear(),
-        student_email: document.getElementById('edit_student_email').value,
-        student_contact: parseInt(document.getElementById('edit_student_contact').value) || 0,
-        assigned_assessor: assessorId,
-        status: document.getElementById('edit_status').value,
-        start_date: document.getElementById('edit_start_date').value || null,
-        end_date: document.getElementById('edit_end_date').value || null
-    };
-
-    const result = await API.updateStudent(updatedStudent);
-
-    if (result.success) {
-        await loadDataFromAPI();
-    } else {
-        alert('Error updating student: ' + (result.error || 'Unknown error'));
+        return false;
     }
 }
 
 async function updateAssessorFromModal() {
     const assessor = assessorsList.find(a => a.id === currentEditId);
-    if (!assessor) return;
+    if (!assessor) {
+        alert('Assessor not found');
+        return false;
+    }
+
+    const name = document.getElementById('edit_assessor_name').value;
+    const email = document.getElementById('edit_assessor_email').value;
+    const contact = document.getElementById('edit_assessor_contact').value;
+    const department = document.getElementById('edit_assessor_dept').value;
+    const role = document.getElementById('edit_assessor_role').value;
+
+    if (!validateEmail(email)) {
+        alert('Invalid email format. Please enter a valid email address.');
+        return false;
+    }
+
+    if (contact && !validateContact(contact)) {
+        alert('Invalid contact format. Use: 012-345-6789');
+        return false;
+    }
 
     const updatedAssessor = {
         user_id: assessor.user_id,
-        assessor_id: parseInt(assessor.id),
-        username: document.getElementById('edit_assessor_name').value,
-        email: document.getElementById('edit_assessor_email').value,
-        contact: document.getElementById('edit_assessor_contact').value,
-        department: document.getElementById('edit_assessor_dept').value,
-        assessor_role: document.getElementById('edit_assessor_role').value
+        assessor_id: parseInt(assessor.raw_id),
+        username: name,
+        email: email,
+        contact: contact,
+        department: department,
+        assessor_role: role
     };
 
     const result = await API.updateAssessor(updatedAssessor);
 
     if (result.success) {
         await loadDataFromAPI();
+        alert('Assessor updated successfully!');
+        return true;
     } else {
         alert('Error updating assessor: ' + (result.error || 'Unknown error'));
+        return false;
     }
 }
 
@@ -925,12 +1284,17 @@ function handleEditClick(e) {
 }
 
 function generateDisplayPassword(username, userId) {
+    // First check if we have a stored password for this user
+    const storedPassword = localStorage.getItem(`user_password_${userId}`);
+    if (storedPassword) {
+        return storedPassword;
+    }
+
     if (!username) return 'user' + String(userId || '0').padStart(6, '0');
     const firstWord = username.split(' ')[0];
     const numbers = String(userId || Math.floor(Math.random() * 1000000)).padStart(6, '0').slice(-6);
     return firstWord + numbers;
 }
-
 // ============================================
 // DELETE FUNCTIONS
 // ============================================
@@ -1068,6 +1432,14 @@ async function init() {
 
     // Check login state (data is already loaded)
     await checkLoginState();
+
+    // Only setup enhanced features if dependencies are available
+    if (typeof window.smartSearch !== 'undefined' || globalSmartSearch) {
+        setupSmartSearchListeners();
+        addExportButtonsToList();
+    } else {
+        console.warn('Enhanced features not available, using basic mode');
+    }
 
     // Set table heights after render
     setTimeout(() => observeTableHeightChanges(), 100);

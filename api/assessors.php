@@ -4,9 +4,28 @@ require_once 'config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
+function getSequentialAssessorIds($pdo) {
+    $stmt = $pdo->query("
+        SELECT assessor_id 
+        FROM assessor 
+        ORDER BY assessor_id ASC
+    ");
+    $allIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    $sequentialMap = [];
+    $counter = 1;
+    foreach ($allIds as $dbId) {
+        $sequentialMap[$dbId] = $counter++;
+    }
+    
+    return $sequentialMap;
+}
+
 switch($method) {
     case 'GET':
         try {
+            $sequentialMap = getSequentialAssessorIds($pdo);
+            
             $stmt = $pdo->query("
                 SELECT 
                     a.assessor_id,
@@ -19,11 +38,15 @@ switch($method) {
                     u.date_created
                 FROM assessor a
                 JOIN user u ON a.user_id = u.user_id
-                ORDER BY a.assessor_id
+                ORDER BY a.assessor_id DESC
             ");
             $assessors = $stmt->fetchAll();
             
             foreach ($assessors as &$assessor) {
+                $seqNum = $sequentialMap[$assessor['assessor_id']];
+                $assessor['formatted_id'] = 'A' . $seqNum;
+                $assessor['display_seq'] = $seqNum;
+                
                 $stmt2 = $pdo->prepare("
                     SELECT s.student_id, s.name
                     FROM student s 
@@ -43,7 +66,6 @@ switch($method) {
         break;
         
     case 'POST':
-        // Users should be created via users.php
         echo json_encode(['success' => false, 'error' => 'Use /api/users.php to create assessors']);
         break;
         
@@ -51,7 +73,6 @@ switch($method) {
         $data = json_decode(file_get_contents('php://input'), true);
         
         try {
-            // Update user table
             $userUpdates = [];
             $userParams = [];
             
@@ -75,7 +96,6 @@ switch($method) {
                 $stmt->execute($userParams);
             }
             
-            // Update assessor table
             $assessorUpdates = [];
             $assessorParams = [];
             
@@ -111,13 +131,11 @@ switch($method) {
         }
         
         try {
-            // Get user_id
             $stmt = $pdo->prepare("SELECT user_id FROM assessor WHERE assessor_id = ?");
             $stmt->execute([$assessorId]);
             $assessor = $stmt->fetch();
             
             if ($assessor) {
-                // Delete assessor (user will be deleted by CASCADE)
                 $stmt2 = $pdo->prepare("DELETE FROM assessor WHERE assessor_id = ?");
                 $stmt2->execute([$assessorId]);
                 

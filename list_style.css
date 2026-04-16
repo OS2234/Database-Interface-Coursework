@@ -28,7 +28,10 @@
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
+    align-items: center;
 }
+
+
 
 .search-input {
     padding: 8px 16px;

@@ -41,7 +41,7 @@ CREATE TABLE `assessor` (
 -- Table: student
 -- --------------------------------------------------------
 CREATE TABLE `student` (
-  `student_id` int(11) NOT NULL,
+  `student_id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
   `student_email` varchar(100) NOT NULL,
   `student_contact` varchar(20) DEFAULT NULL,
@@ -130,14 +130,14 @@ INSERT INTO `assessor` (`assessor_id`, `user_id`, `department`, `role`) VALUES
 
 -- Insert students
 INSERT INTO `student` (`student_id`, `name`, `student_email`, `student_contact`, `enrollment_year`, `programme`, `assigned_assessor`) VALUES
-(1001, 'Emma Watson', 'emma.watson@student.edu', '0111222333', 2023, 'Computer Science', 1),
-(1002, 'James Brown', 'james.brown@student.edu', '0444555666', 2022, 'Engineering', 1),
-(1003, 'Luis Chen', 'luis.chen@student.edu', '0777888999', 2024, 'Business', 2);
+(1, 'Emma Watson', 'emma.watson@student.edu', '0111222333', 2023, 'Computer Science', 1),
+(2, 'James Brown', 'james.brown@student.edu', '0444555666', 2022, 'Engineering', 1),
+(3, 'Luis Chen', 'luis.chen@student.edu', '0777888999', 2024, 'Business', 2);
 
 -- Insert internships
 INSERT INTO `internship` (`internship_id`, `student_id`, `assessor_id`, `company_name`, `start_date`, `end_date`, `status`, `internship_notes`) VALUES
-(1, 1001, 1, 'Innovate Tech', '2025-06-01', '2025-08-01', 'Evaluated', 'Excellent performance'),
-(2, 1002, 1, 'BuildCorp', '2025-06-05', '2025-08-05', 'Ongoing', NULL),
-(3, 1003, 2, 'FinGroup', '2025-06-10', '2025-08-10', 'Pending', NULL);
+(1, 1, 1, 'Innovate Tech', '2025-06-01', '2025-08-01', 'Evaluated', 'Excellent performance'),
+(2, 2, 1, 'BuildCorp', '2025-06-05', '2025-08-05', 'Ongoing', NULL),
+(3, 3, 2, 'FinGroup', '2025-06-10', '2025-08-10', 'Pending', NULL);
 
 COMMIT;

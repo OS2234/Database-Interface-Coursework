@@ -18,11 +18,30 @@ const DOM = {
 // ============================================
 // DATA STRUCTURES
 // ============================================
-let accountList = [];
-let studentList = [];
-let assessorList = [];
+let fullAccountList = [];
+let fullStudentList = [];
+let fullAssessorList = [];
 let assessorEvaluations = {};
 let actualPasswords = {};
+
+// ============================================
+// VALIDATION FUNCTIONS
+// ============================================
+
+function validateContact(contact) {
+    const pattern = /^\d{3}-\d{3}-\d{4}$/;
+    return pattern.test(contact);
+}
+
+function validateEmail(email) {
+    const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return pattern.test(email);
+}
+
+function validateYear(year) {
+    const currentYear = new Date().getFullYear();
+    return year >= 2000 && year <= currentYear;
+}
 
 // ============================================
 // GENERAL FUNCTIONS
@@ -71,14 +90,14 @@ async function loadDataFromAPI() {
         console.log('Assessors received:', assessors);
         console.log('Users received:', users);
 
-        // Ensure we have arrays
         const studentsArray = Array.isArray(students) ? students : [];
         const assessorsArray = Array.isArray(assessors) ? assessors : [];
         const usersArray = Array.isArray(users) ? users : [];
 
         // Transform students data
-        studentList = studentsArray.map(s => ({
-            id: s.student_id?.toString() || '',
+        fullStudentList = studentsArray.map(s => ({
+            id: s.formatted_id || 'S' + s.student_id,
+            raw_id: s.student_id,
             name: s.name || '',
             programme: s.programme || '',
             company: s.company_name || '',
@@ -95,8 +114,9 @@ async function loadDataFromAPI() {
         }));
 
         // Transform assessors data
-        assessorList = assessorsArray.map(a => ({
-            id: a.assessor_id?.toString() || '',
+        fullAssessorList = assessorsArray.map(a => ({
+            id: a.formatted_id || 'A' + a.assessor_id,
+            raw_id: a.assessor_id,
             name: a.username || '',
             role: a.assessor_role || 'Assessor',
             dept: a.department || '',
@@ -107,16 +127,23 @@ async function loadDataFromAPI() {
             user_id: a.user_id
         }));
 
-        // Transform users/accounts data
-        accountList = usersArray.map(u => {
+        // Transform accounts data - FIXED to preserve actual passwords
+        fullAccountList = usersArray.map(u => {
             const userId = u.user_id;
             let displayPassword = actualPasswords[userId];
-            if (!displayPassword) {
+
+            // Check if we have a stored password for this user
+            const storedPassword = localStorage.getItem(`user_password_${userId}`);
+            if (storedPassword) {
+                displayPassword = storedPassword;
+                actualPasswords[userId] = storedPassword;
+            } else if (!displayPassword) {
                 displayPassword = generateDisplayPassword(u.username, userId);
                 actualPasswords[userId] = displayPassword;
             }
 
             return {
+                id: u.formatted_id || 'U' + u.user_id,
                 username: u.username || '',
                 email: u.email || '',
                 password: displayPassword,
@@ -128,19 +155,23 @@ async function loadDataFromAPI() {
         });
         saveStoredPasswords();
 
-        console.log('Transformed studentList:', studentList);
-        console.log('Transformed assessorList:', assessorList);
-        console.log('Transformed accountList:', accountList);
+        // Sort by ID descending (newest first)
+        fullAccountList.sort((a, b) => b.user_id - a.user_id);
+        fullStudentList.sort((a, b) => b.student_id - a.student_id);
+        fullAssessorList.sort((a, b) => b.assessor_id - a.assessor_id);
 
-        // Load evaluations from localStorage
+        console.log('Total accounts:', fullAccountList.length);
+        console.log('Total students:', fullStudentList.length);
+        console.log('Total assessors:', fullAssessorList.length);
+
         loadEvaluations();
 
         return true;
     } catch (error) {
         console.error('Error loading data:', error);
-        studentList = [];
-        assessorList = [];
-        accountList = [];
+        fullStudentList = [];
+        fullAssessorList = [];
+        fullAccountList = [];
         return false;
     }
 }
@@ -246,7 +277,7 @@ async function checkLogin() {
             showAdminDashboard();
             renderAllTables();
         } else if (user.userRole?.toLowerCase() === 'assessor') {
-            const assessor = assessorList.find(a => a.email === user.email);
+            const assessor = fullAssessorList.find(a => a.email === user.email);
             if (assessor) {
                 showAssessorDashboard(assessor);
                 renderAllTables();
@@ -344,30 +375,33 @@ function setupEventListeners() {
         });
     }
 
+    // Use DOM elements directly with more reliable selectors
     const addStudentBtn = document.getElementById('addStudentBtn');
     const addAssessorBtn = document.getElementById('addAssessorBtn');
     const addAccountBtn = document.getElementById('addAccountBtn');
 
     if (addStudentBtn) {
+        addStudentBtn.removeEventListener('click', addNewStudent);
         addStudentBtn.addEventListener('click', addNewStudent);
+        console.log('Add student button listener attached');
     }
 
     if (addAssessorBtn) {
+        addAssessorBtn.removeEventListener('click', addNewAssessor);
         addAssessorBtn.addEventListener('click', addNewAssessor);
+        console.log('Add assessor button listener attached');
     }
 
     if (addAccountBtn) {
+        addAccountBtn.removeEventListener('click', addNewAccount);
         addAccountBtn.addEventListener('click', addNewAccount);
+        console.log('Add account button listener attached');
     }
 }
 
 // ======================
 // INITIALIZATION
 // ======================
-
-async function initData() {
-    await loadDataFromAPI();
-}
 
 function renderAllTables() {
     syncAssignedStudentIds();
@@ -379,7 +413,7 @@ function renderAllTables() {
     if (loggedInUser) {
         const user = JSON.parse(loggedInUser);
         if (user.userRole?.toLowerCase() === 'assessor') {
-            const assessor = assessorList.find(a => a.email === user.email);
+            const assessor = fullAssessorList.find(a => a.email === user.email);
             if (assessor) {
                 renderAssessorDashboard(assessor);
             }
@@ -400,19 +434,16 @@ function clearAllSelections() {
 }
 
 function setupRowDelegation() {
-    // Account table row selection
     if (DOM.accountTbody) {
         DOM.accountTbody.removeEventListener('click', handleAccountRowClick);
         DOM.accountTbody.addEventListener('click', handleAccountRowClick);
     }
 
-    // Student table row selection
     if (DOM.studentTbody) {
         DOM.studentTbody.removeEventListener('click', handleStudentRowClick);
         DOM.studentTbody.addEventListener('click', handleStudentRowClick);
     }
 
-    // Assessor table row selection
     if (DOM.assessorTbody) {
         DOM.assessorTbody.removeEventListener('click', handleAssessorRowClick);
         DOM.assessorTbody.addEventListener('click', handleAssessorRowClick);
@@ -423,7 +454,6 @@ function handleAccountRowClick(e) {
     const row = e.target.closest('tr');
     if (!row) return;
 
-    // Don't select if clicking on a button
     if (e.target.closest('.edit-account-btn') || e.target.closest('.delete-account-btn') ||
         e.target.closest('.save-account-btn') || e.target.closest('.cancel-account-btn')) {
         return;
@@ -437,7 +467,6 @@ function handleStudentRowClick(e) {
     const row = e.target.closest('tr');
     if (!row) return;
 
-    // Don't select if clicking on a button
     if (e.target.closest('.edit-student-btn') || e.target.closest('.delete-student-btn') ||
         e.target.closest('.save-student-btn') || e.target.closest('.cancel-student-btn')) {
         return;
@@ -451,7 +480,6 @@ function handleAssessorRowClick(e) {
     const row = e.target.closest('tr');
     if (!row) return;
 
-    // Don't select if clicking on a button
     if (e.target.closest('.edit-assessor-btn') || e.target.closest('.delete-assessor-btn') ||
         e.target.closest('.save-assessor-btn') || e.target.closest('.cancel-assessor-btn')) {
         return;
@@ -484,7 +512,7 @@ function insertAccountAddForm() {
                 <option value="Assessor">Assessor</option>
             </select>
         </td>
-        <td><input type="tel" id="add_account_contact" placeholder="Contact" style="width:110px"></td>
+        <td><input type="tel" id="add_account_contact" placeholder="Contact (012-345-6789)" style="width:140px"></td>
         <td style="color: rgba(255,255,255,0.7); font-size: 14px;">Auto-generated on save</td>
         <td class="action-cell">
             <div class="action-buttons">
@@ -500,7 +528,6 @@ function insertAccountAddForm() {
         DOM.accountTbody.appendChild(addRow);
     }
 
-    // Preview generated password when username changes
     const usernameInput = document.getElementById('add_account_username');
     const passwordField = document.getElementById('add_account_password');
 
@@ -509,7 +536,7 @@ function insertAccountAddForm() {
             const username = this.value.trim();
             if (username) {
                 const firstWord = username.split(' ')[0];
-                const previewNumbers = 'XXXXXX';  // Preview placeholder
+                const previewNumbers = 'XXXXXX';
                 passwordField.value = firstWord + previewNumbers;
                 passwordField.style.color = '#ffaa00';
             } else {
@@ -532,17 +559,29 @@ async function saveAccountAdd() {
         return;
     }
 
-    const firstWord = newUsername.split(' ')[0];
+    const email = document.getElementById('add_account_email').value.trim();
+    if (!validateEmail(email)) {
+        alert('Invalid email format');
+        document.getElementById('add_account_email').focus();
+        return;
+    }
 
-    const randomNumbers = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
-    const generatedPassword = firstWord + randomNumbers;
+    const contact = document.getElementById('add_account_contact').value.trim();
+    if (contact && !validateContact(contact)) {
+        alert('Invalid contact format. Use: 012-345-6789');
+        document.getElementById('add_account_contact').focus();
+        return;
+    }
+
+    const firstWord = newUsername.split(' ')[0];
+    const tempPassword = 'temp_' + Date.now();
 
     const newAccount = {
         username: newUsername,
-        email: document.getElementById('add_account_email').value.trim(),
-        password: generatedPassword,
+        email: email,
+        password: tempPassword,
         userRole: document.getElementById('add_account_role').value,
-        contact: document.getElementById('add_account_contact').value.trim(),
+        contact: contact,
         department: '',
         assessor_role: 'Assessor'
     };
@@ -550,16 +589,30 @@ async function saveAccountAdd() {
     const result = await API.addUser(newAccount);
 
     if (result.success) {
-        // Store the actual password
-        if (result.password) {
-            actualPasswords[result.user_id] = result.password;
-            saveStoredPasswords();
-        }
+        const actualUserId = result.user_id;
+        const correctPassword = firstWord + String(actualUserId).padStart(6, '0');
 
-        alert(`Account created successfully!\nUsername: ${newUsername}\nPassword: ${generatedPassword}`);
-        isAccountAddFormVisible = false;
-        await loadDataFromAPI();
-        renderAllTables();
+        const updateResult = await API.updateUser({
+            user_id: actualUserId,
+            username: newUsername,
+            email: email,
+            password: correctPassword,
+            userRole: newAccount.userRole,
+            contact: contact
+        });
+
+        if (updateResult.success) {
+            actualPasswords[actualUserId] = correctPassword;
+            localStorage.setItem(`user_password_${actualUserId}`, correctPassword);
+            saveStoredPasswords();
+
+            alert(`Account created successfully!\nUsername: ${newUsername}\nPassword: ${correctPassword}\nAccount ID: ${result.formatted_id || 'U' + actualUserId}`);
+            isAccountAddFormVisible = false;
+            await loadDataFromAPI();
+            renderAllTables();
+        } else {
+            alert('Error setting account password: ' + (updateResult.error || 'Unknown error'));
+        }
     } else {
         alert('Error creating account: ' + (result.error || 'Unknown error'));
     }
@@ -594,14 +647,15 @@ function renderAccountTable() {
 
     DOM.accountTbody.innerHTML = '';
 
-    if (accountList.length === 0) {
+    // Get last 3 accounts
+    const lastThreeAccounts = fullAccountList.slice(0, 3);
+
+    if (lastThreeAccounts.length === 0) {
         const emptyMessageRow = document.createElement('tr');
-        emptyMessageRow.innerHTML = `<td colspan="7" style="text-align:center">No accounts found. Click "Add new account" to add.</td>`;
+        emptyMessageRow.innerHTML = `<td colspan="7" style="text-align:center">No accounts found. Click "Add new account" to add.`;
         DOM.accountTbody.appendChild(emptyMessageRow);
     } else {
-        accountList.sort((a, b) => a.username.localeCompare(b.username));
-
-        accountList.forEach((account, index) => {
+        lastThreeAccounts.forEach((account, index) => {
             const row = document.createElement('tr');
             row.setAttribute('data-account-index', index);
             row.innerHTML = `
@@ -609,12 +663,12 @@ function renderAccountTable() {
                 <td>${escapeHtml(account.email)}</td>
                 <td>${escapeHtml(account.password)}</td>
                 <td>${escapeHtml(account.userRole)}</td>
-                <td>${escapeHtml(account.contact)}</td>
+                <td>${escapeHtml(account.contact || '—')}</td>
                 <td>${escapeHtml(account.createdAt)}</td>
                 <td class="action-cell">
                     <button class="edit-account-btn" data-index="${index}">Edit</button>
                     <button class="delete-account-btn" data-index="${index}">Delete</button>
-                </td>
+                  </td>
             `;
             DOM.accountTbody.appendChild(row);
         });
@@ -648,11 +702,10 @@ function handleDeleteAccount(e) {
 }
 
 function enableEditAccountRow(index) {
-    const account = accountList[index];
+    const account = fullAccountList[index];
     const row = DOM.accountTbody.querySelector(`tr[data-account-index="${index}"]`);
     if (!row) return;
 
-    // Get current password display
     const currentDisplayPassword = account.password;
 
     row.innerHTML = `
@@ -661,22 +714,22 @@ function enableEditAccountRow(index) {
         <td>
             <div style="display: flex; flex-direction: column; gap: 5px;">
                 <input type="text" value="" id="edit_account_password_${index}" 
-                       placeholder=${escapeHtml(currentDisplayPassword)} 
+                       placeholder="${escapeHtml(currentDisplayPassword)}" 
                        style="width:140px; padding:3px;">
             </div>
-        </td>
+           </td>
         <td>
             <select id="edit_account_role_${index}" style="width:100px; padding:3px;">
                 <option value="Administrator" ${account.userRole === 'Administrator' ? 'selected' : ''}>Administrator</option>
                 <option value="Assessor" ${account.userRole === 'Assessor' ? 'selected' : ''}>Assessor</option>
             </select>
-        </td>
+           </td>
         <td><input type="tel" value="${escapeHtml(account.contact || '')}" id="edit_account_contact_${index}" style="width:100px; padding:3px;"></td>
         <td style="color: rgba(255,255,255,0.7); font-size: 14px;">${escapeHtml(account.createdAt)}</td>
         <td class="action-cell">
             <button class="table-btn save-account-btn" data-index="${index}">Save</button>
             <button class="table-btn cancel-account-btn" data-index="${index}">Cancel</button>
-        </td>
+          </td>
     `;
 
     document.querySelector(`.save-account-btn[data-index="${index}"]`).addEventListener('click', () => saveAccountEdit(index));
@@ -684,7 +737,7 @@ function enableEditAccountRow(index) {
 }
 
 async function saveAccountEdit(index) {
-    const oldAccount = accountList[index];
+    const oldAccount = fullAccountList[index];
     const newPasswordInput = document.getElementById(`edit_account_password_${index}`);
     const newPassword = newPasswordInput ? newPasswordInput.value.trim() : '';
 
@@ -692,6 +745,16 @@ async function saveAccountEdit(index) {
     const updatedEmail = document.getElementById(`edit_account_email_${index}`).value;
     const updatedRole = document.getElementById(`edit_account_role_${index}`).value;
     const updatedContact = document.getElementById(`edit_account_contact_${index}`).value;
+
+    if (!validateEmail(updatedEmail)) {
+        alert('Invalid email format');
+        return;
+    }
+
+    if (updatedContact && !validateContact(updatedContact)) {
+        alert('Invalid contact format. Use: 012-345-6789');
+        return;
+    }
 
     const updatedAccount = {
         user_id: oldAccount.user_id,
@@ -713,9 +776,9 @@ async function saveAccountEdit(index) {
     const result = await API.updateUser(updatedAccount);
 
     if (result.success) {
-        // Update stored password if changed
         if (passwordChanged && newPlainPassword) {
             actualPasswords[oldAccount.user_id] = newPlainPassword;
+            localStorage.setItem(`user_password_${oldAccount.user_id}`, newPlainPassword);
             saveStoredPasswords();
             alert(`✅ Account updated successfully! New Password: ${newPlainPassword}`);
         } else {
@@ -731,10 +794,11 @@ async function saveAccountEdit(index) {
 
 async function deleteAccount(index) {
     if (confirm('Are you sure you want to delete this account?')) {
-        const account = accountList[index];
+        const account = fullAccountList[index];
         const result = await API.deleteUser(account.user_id);
 
         if (result.success) {
+            localStorage.removeItem(`user_password_${account.user_id}`);
             await loadDataFromAPI();
             renderAllTables();
             alert('Account deleted successfully');
@@ -745,6 +809,12 @@ async function deleteAccount(index) {
 }
 
 function generateDisplayPassword(username, userId) {
+    // First check if we have a stored password for this user
+    const storedPassword = localStorage.getItem(`user_password_${userId}`);
+    if (storedPassword) {
+        return storedPassword;
+    }
+
     if (!username) return 'user' + String(userId || '0').padStart(6, '0');
     const firstWord = username.split(' ')[0];
     const numbers = String(userId || Math.floor(Math.random() * 1000000)).padStart(6, '0').slice(-6);
@@ -767,23 +837,29 @@ function insertStudentAddForm() {
         ${statusOptions.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
     </select>`;
 
-    const assessorNames = ['', ...getAssessorNamesList()];
+    const programmeOptions = ['Computer Science', 'Business', 'Engineering'];
+    const programmeDropdown = `<select id="add_programme" class="add-dropdown" style="width:120px; padding:4px; border-radius:4px;">
+        <option value="">-- Select Programme --</option>
+        ${programmeOptions.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+    </select>`;
+
+    const assessorNames = ['', ...fullAssessorList.map(a => a.name)];
     const assessorDropdown = `<select id="add_assessor" class="add-dropdown" style="width:120px; padding:4px; border-radius:4px;">
         ${assessorNames.map(name => `<option value="${name}">${name || '—'}</option>`).join('')}
     </select>`;
 
     addRow.innerHTML = `
-        <td><input type="text" id="add_student_id" placeholder="Student ID" style="width:80px"></td>
+        <td style="color: cyan; font-weight: bold;">Auto-generated</td>
         <td><input type="text" id="add_student_name" placeholder="Full name" style="width:110px"></td>
-        <td><input type="text" id="add_programme" placeholder="Programme" style="width:110px"></td>
+        <td class="programme-cell">${programmeDropdown}</td>
         <td><input type="text" id="add_company" placeholder="Company" style="width:110px"></td>
         <td><input type="text" id="add_year" placeholder="Year" style="width:70px"></td>
         <td><input type="email" id="add_email" placeholder="Email" style="width:130px"></td>
-        <td><input type="tel" id="add_contact" placeholder="Contact" style="width:100px"></td>
+        <td><input type="tel" id="add_contact" placeholder="Contact (012-345-6789)" style="width:130px"></td>
         <td style="min-width: 200px;">
             <input type="date" id="add_internship_start" style="width: 120px; margin-right: 5px;"> to 
             <input type="date" id="add_internship_end" style="width: 120px;">
-        </td>
+          </td>
         <td class="status-cell">${statusDropdown}</td>
         <td class="assessor-cell">${assessorDropdown}</td>
         <td class="action-cell">
@@ -791,7 +867,7 @@ function insertStudentAddForm() {
                 <button class="add-save-btn" id="saveStudentAddBtn">Save</button>
                 <button class="add-cancel-btn" id="cancelStudentAddBtn">Cancel</button>
             </div>
-        </td>
+          </td>
     `;
 
     if (DOM.studentTbody.firstChild) {
@@ -802,21 +878,43 @@ function insertStudentAddForm() {
 
     document.getElementById('saveStudentAddBtn').addEventListener('click', saveStudentAdd);
     document.getElementById('cancelStudentAddBtn').addEventListener('click', cancelStudentAdd);
-    document.getElementById('add_student_id').focus();
+    document.getElementById('add_student_name').focus();
 }
 
 async function saveStudentAdd() {
-    const newId = document.getElementById('add_student_id').value.trim();
     const newName = document.getElementById('add_student_name').value.trim();
 
-    if (!newId) {
-        alert('Please enter Student ID');
-        document.getElementById('add_student_id').focus();
-        return;
-    }
     if (!newName) {
         alert('Please enter Student Name');
         document.getElementById('add_student_name').focus();
+        return;
+    }
+
+    const email = document.getElementById('add_email').value.trim();
+    if (email && !validateEmail(email)) {
+        alert('Invalid email format');
+        document.getElementById('add_email').focus();
+        return;
+    }
+
+    const contact = document.getElementById('add_contact').value.trim();
+    if (contact && !validateContact(contact)) {
+        alert('Invalid contact format. Use: 012-345-6789');
+        document.getElementById('add_contact').focus();
+        return;
+    }
+
+    const year = parseInt(document.getElementById('add_year').value.trim());
+    if (isNaN(year) || !validateYear(year)) {
+        alert('Invalid enrollment year (2000-' + (new Date().getFullYear() + 5) + ')');
+        document.getElementById('add_year').focus();
+        return;
+    }
+
+    const programme = document.getElementById('add_programme').value;
+    if (!programme) {
+        alert('Please select a programme');
+        document.getElementById('add_programme').focus();
         return;
     }
 
@@ -825,17 +923,16 @@ async function saveStudentAdd() {
     const newStatus = document.getElementById('add_status').value;
     const newAssessorName = document.getElementById('add_assessor').value;
 
-    const selectedAssessor = assessorList.find(a => a.name === newAssessorName);
-    const assessorId = selectedAssessor ? parseInt(selectedAssessor.id) : null;
+    const selectedAssessor = fullAssessorList.find(a => a.name === newAssessorName);
+    const assessorId = selectedAssessor ? parseInt(selectedAssessor.raw_id) : null;
 
     const newStudent = {
-        student_id: parseInt(newId),
         name: newName,
-        programme: document.getElementById('add_programme').value.trim(),
+        programme: programme,
         company_name: document.getElementById('add_company').value.trim(),
-        enrollment_year: parseInt(document.getElementById('add_year').value.trim()) || new Date().getFullYear(),
-        student_email: document.getElementById('add_email').value.trim(),
-        student_contact: parseInt(document.getElementById('add_contact').value.trim()) || 0,
+        enrollment_year: year,
+        student_email: email,
+        student_contact: contact,
         assigned_assessor: assessorId,
         status: newStatus,
         start_date: startDate || null,
@@ -845,7 +942,7 @@ async function saveStudentAdd() {
     const result = await API.addStudent(newStudent);
 
     if (result.success) {
-        alert('Student added successfully!');
+        alert(`Student added successfully!\nStudent ID: ${result.formatted_id || 'S' + result.student_id}`);
         isStudentAddFormVisible = false;
         await loadDataFromAPI();
         renderAllTables();
@@ -878,23 +975,20 @@ function addNewStudent() {
     renderStudentTable();
 }
 
-function getAssessorNamesList() {
-    return assessorList.map(assessor => assessor.name);
-}
-
 function renderStudentTable() {
     if (!DOM.studentTbody) return;
 
     DOM.studentTbody.innerHTML = '';
 
-    if (studentList.length === 0) {
+    // Get last 3 students
+    const lastThreeStudents = fullStudentList.slice(0, 3);
+
+    if (lastThreeStudents.length === 0) {
         const emptyMessageRow = document.createElement('tr');
-        emptyMessageRow.innerHTML = `<td colspan="11" style="text-align:center">No students found. Click "Add new student" to add.</td>`;
+        emptyMessageRow.innerHTML = `<td colspan="11" style="text-align:center">No students found. Click "Add new student" to add.`;
         DOM.studentTbody.appendChild(emptyMessageRow);
     } else {
-        studentList.sort((a, b) => (parseInt(a.id) || 0) - (parseInt(b.id) || 0));
-
-        studentList.forEach((student, index) => {
+        lastThreeStudents.forEach((student, index) => {
             const row = document.createElement('tr');
             row.setAttribute('data-student-index', index);
             row.innerHTML = `
@@ -911,7 +1005,7 @@ function renderStudentTable() {
                 <td class="action-cell">
                     <button class="edit-student-btn" data-index="${index}">Edit</button>
                     <button class="delete-student-btn" data-index="${index}">Delete</button>
-                </td>
+                  </td>
             `;
             DOM.studentTbody.appendChild(row);
         });
@@ -945,7 +1039,7 @@ function handleDeleteStudent(e) {
 }
 
 function enableEditStudentRow(index) {
-    const student = studentList[index];
+    const student = fullStudentList[index];
     const row = DOM.studentTbody.querySelector(`tr[data-student-index="${index}"]`);
     if (!row) return;
 
@@ -954,7 +1048,12 @@ function enableEditStudentRow(index) {
         ${statusOptions.map(opt => `<option value="${opt}" ${student.status === opt ? 'selected' : ''}>${opt}</option>`).join('')}
     </select>`;
 
-    const assessorNames = ['', ...getAssessorNamesList()];
+    const programmeOptions = ['Computer Science', 'Business', 'Engineering'];
+    const programmeDropdown = `<select id="edit_programme_${index}" style="width:120px; padding:4px; border-radius:4px;">
+        ${programmeOptions.map(opt => `<option value="${opt}" ${student.programme === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+    </select>`;
+
+    const assessorNames = ['', ...fullAssessorList.map(a => a.name)];
     const assessorDropdown = `<select id="edit_assigned_assessor_${index}" style="width:120px; padding:4px; border-radius:4px;">
         ${assessorNames.map(name => `<option value="${name}" ${student.assigned_assessor === name ? 'selected' : ''}>${name || '—'}</option>`).join('')}
     </select>`;
@@ -962,7 +1061,7 @@ function enableEditStudentRow(index) {
     row.innerHTML = `
         <td><input type="text" value="${student.id || ''}" id="edit_id_${index}" style="width:70px; padding:3px;" readonly></td>
         <td><input type="text" value="${student.name || ''}" id="edit_name_${index}" style="width:100px; padding:3px;"></td>
-        <td><input type="text" value="${student.programme || ''}" id="edit_prog_${index}" style="width:100px; padding:3px;"></td>
+        <td class="programme-cell">${programmeDropdown}</td>
         <td><input type="text" value="${student.company || ''}" id="edit_comp_${index}" style="width:100px; padding:3px;"></td>
         <td><input type="text" value="${student.year || ''}" id="edit_year_${index}" style="width:70px; padding:3px;"></td>
         <td><input type="email" value="${student.email || ''}" id="edit_email_${index}" style="width:120px; padding:3px;"></td>
@@ -970,13 +1069,13 @@ function enableEditStudentRow(index) {
         <td style="min-width: 200px;">
             <input type="date" value="${student.start_date || ''}" id="edit_start_${index}" style="width: 120px; margin-right: 5px;"> to 
             <input type="date" value="${student.end_date || ''}" id="edit_end_${index}" style="width: 120px;">
-        </td>
+          </td>
         <td class="status-cell">${statusDropdown}</td>
         <td class="assessor-cell">${assessorDropdown}</td>
         <td class="action-cell">
             <button class="table-btn save-student-btn" data-index="${index}">Save</button>
             <button class="table-btn cancel-student-btn" data-index="${index}">Cancel</button>
-        </td>
+          </td>
     `;
 
     document.querySelector(`.save-student-btn[data-index="${index}"]`).addEventListener('click', () => saveStudentEdit(index));
@@ -984,19 +1083,44 @@ function enableEditStudentRow(index) {
 }
 
 async function saveStudentEdit(index) {
-    const student = studentList[index];
+    const student = fullStudentList[index];
+
+    const email = document.getElementById(`edit_email_${index}`).value;
+    if (email && !validateEmail(email)) {
+        alert('Invalid email format');
+        return;
+    }
+
+    const contact = document.getElementById(`edit_contact_${index}`).value;
+    if (contact && !validateContact(contact)) {
+        alert('Invalid contact format. Use: 012-345-6789');
+        return;
+    }
+
+    const year = parseInt(document.getElementById(`edit_year_${index}`).value);
+    if (isNaN(year) || !validateYear(year)) {
+        alert('Invalid enrollment year (2000-' + (new Date().getFullYear() + 5) + ')');
+        return;
+    }
+
+    const programme = document.getElementById(`edit_programme_${index}`).value;
+    if (!programme) {
+        alert('Please select a programme');
+        return;
+    }
+
     const newAssessorName = document.getElementById(`edit_assigned_assessor_${index}`).value;
-    const selectedAssessor = assessorList.find(a => a.name === newAssessorName);
-    const assessorId = selectedAssessor ? parseInt(selectedAssessor.id) : null;
+    const selectedAssessor = fullAssessorList.find(a => a.name === newAssessorName);
+    const assessorId = selectedAssessor ? parseInt(selectedAssessor.raw_id) : null;
 
     const updatedStudent = {
-        student_id: parseInt(student.id),
+        student_id: parseInt(student.student_id),
         name: document.getElementById(`edit_name_${index}`).value,
-        programme: document.getElementById(`edit_prog_${index}`).value,
+        programme: programme,
         company_name: document.getElementById(`edit_comp_${index}`).value,
-        enrollment_year: parseInt(document.getElementById(`edit_year_${index}`).value) || new Date().getFullYear(),
-        student_email: document.getElementById(`edit_email_${index}`).value,
-        student_contact: parseInt(document.getElementById(`edit_contact_${index}`).value) || 0,
+        enrollment_year: year,
+        student_email: email,
+        student_contact: contact,
         assigned_assessor: assessorId,
         status: document.getElementById(`edit_status_${index}`).value,
         start_date: document.getElementById(`edit_start_${index}`).value || null,
@@ -1016,8 +1140,8 @@ async function saveStudentEdit(index) {
 
 async function deleteStudent(index) {
     if (confirm('Are you sure you want to delete this student?')) {
-        const student = studentList[index];
-        const result = await API.deleteStudent(parseInt(student.id));
+        const student = fullStudentList[index];
+        const result = await API.deleteStudent(parseInt(student.student_id));
 
         if (result.success) {
             await loadDataFromAPI();
@@ -1041,42 +1165,25 @@ function insertAssessorAddForm() {
     addRow.id = 'assessor-add-form-row';
 
     addRow.innerHTML = `
+        <td class="assessor_id" style="color: rgba(255,255,255,0.5); font-style: italic;">—</td>
         <td><input type="text" id="add_assessor_name" placeholder="Full name" style="width:110px"></td>
         <td><input type="text" id="add_assessor_role" placeholder="Role" style="width:100px"></td>
         <td><input type="text" id="add_assessor_dept" placeholder="Department" style="width:100px"></td>
         <td><input type="email" id="add_assessor_email" placeholder="Email" style="width:130px"></td>
-        <td><input type="tel" id="add_assessor_contact" placeholder="Contact" style="width:100px"></td>
-        <td>
-            <input type="text" id="add_assessor_password" placeholder="Auto-generated" 
-                   style="width:100px; background:#f0f0f0; color:#666;" readonly>
-        </td>
+        <td><input type="tel" id="add_assessor_contact" placeholder="Contact (012-345-6789)" style="width:130px"></td>
+        <td class="assigned-students-placeholder" style="color: rgba(255,255,255,0.5); font-style: italic;">—</td>
         <td class="action-cell">
             <div class="action-buttons">
                 <button class="add-save-btn" id="saveAssessorAddBtn">Save</button>
                 <button class="add-cancel-btn" id="cancelAssessorAddBtn">Cancel</button>
             </div>
-        </td>
+          </td>
     `;
 
     if (DOM.assessorTbody.firstChild) {
         DOM.assessorTbody.insertBefore(addRow, DOM.assessorTbody.firstChild);
     } else {
         DOM.assessorTbody.appendChild(addRow);
-    }
-
-    // Update password preview when name changes
-    const nameInput = document.getElementById('add_assessor_name');
-    const passwordField = document.getElementById('add_assessor_password');
-
-    if (nameInput && passwordField) {
-        nameInput.addEventListener('input', function () {
-            const name = this.value.trim();
-            if (name) {
-                passwordField.value = generateDisplayPassword(name);
-            } else {
-                passwordField.value = 'Auto-generated';
-            }
-        });
     }
 
     document.getElementById('saveAssessorAddBtn').addEventListener('click', saveAssessorAdd);
@@ -1093,14 +1200,27 @@ async function saveAssessorAdd() {
         return;
     }
 
-    // Auto-generate password from name
-    const generatedPassword = generateDisplayPassword(newName);
+    const email = document.getElementById('add_assessor_email').value.trim();
+    if (!validateEmail(email)) {
+        alert('Invalid email format');
+        document.getElementById('add_assessor_email').focus();
+        return;
+    }
+
+    const contact = document.getElementById('add_assessor_contact').value.trim();
+    if (contact && !validateContact(contact)) {
+        alert('Invalid contact format. Use: 012-345-6789');
+        document.getElementById('add_assessor_contact').focus();
+        return;
+    }
+
+    const firstWord = newName.split(' ')[0];
 
     const newAssessor = {
         username: newName,
-        email: document.getElementById('add_assessor_email').value.trim(),
-        password: generatedPassword,  // Auto-generated
-        contact: document.getElementById('add_assessor_contact').value.trim(),
+        email: email,
+        password: 'temp_password',
+        contact: contact,
         userRole: 'Assessor',
         department: document.getElementById('add_assessor_dept').value.trim(),
         assessor_role: document.getElementById('add_assessor_role').value.trim()
@@ -1109,10 +1229,30 @@ async function saveAssessorAdd() {
     const result = await API.addUser(newAssessor);
 
     if (result.success) {
-        alert(`Assessor created successfully!\nUsername: ${newName}\nPassword: ${generatedPassword}`);
-        isAssessorAddFormVisible = false;
-        await loadDataFromAPI();
-        renderAllTables();
+        const actualUserId = result.user_id;
+        const correctPassword = firstWord + String(actualUserId).padStart(6, '0');
+
+        const updateResult = await API.updateUser({
+            user_id: actualUserId,
+            username: newName,
+            email: email,
+            password: correctPassword,
+            userRole: 'Assessor',
+            contact: contact
+        });
+
+        if (updateResult.success) {
+            actualPasswords[actualUserId] = correctPassword;
+            localStorage.setItem(`user_password_${actualUserId}`, correctPassword);
+            saveStoredPasswords();
+
+            alert(`Assessor created successfully!\nUsername: ${newName}\nPassword: ${correctPassword}\nAssessor ID: ${result.formatted_id || 'A' + actualUserId}`);
+            isAssessorAddFormVisible = false;
+            await loadDataFromAPI();
+            renderAllTables();
+        } else {
+            alert('Error setting assessor password: ' + (updateResult.error || 'Unknown error'));
+        }
     } else {
         alert('Error creating assessor: ' + (result.error || 'Unknown error'));
     }
@@ -1147,18 +1287,19 @@ function renderAssessorTable() {
 
     DOM.assessorTbody.innerHTML = '';
 
-    if (assessorList.length === 0) {
+    // Get last 3 assessors
+    const lastThreeAssessors = fullAssessorList.slice(0, 3);
+
+    if (lastThreeAssessors.length === 0) {
         const emptyMessageRow = document.createElement('tr');
         emptyMessageRow.innerHTML = `<td colspan="8" style="text-align:center">No assessors found. Click "Add new assessor" to add.`;
         DOM.assessorTbody.appendChild(emptyMessageRow);
     } else {
-        assessorList.sort((a, b) => (parseInt(a.id) || 0) - (parseInt(b.id) || 0));
-
-        assessorList.forEach((assessor, index) => {
+        lastThreeAssessors.forEach((assessor, index) => {
             let assignedStudents = '';
             if (assessor.assignedStudentIds && assessor.assignedStudentIds.length > 0) {
                 const studentNames = assessor.assignedStudentIds
-                    .map(id => studentList.find(s => s.id === id)?.name || id).filter(name => name);
+                    .map(id => fullStudentList.find(s => s.student_id == id)?.name || id).filter(name => name);
                 assignedStudents = `<div class="assigned-list">${studentNames.map(name => `<span>${escapeHtml(name)}</span>`).join('')}</div>`;
             } else {
                 assignedStudents = '<div class="assigned-list"><span>—</span></div>';
@@ -1177,7 +1318,7 @@ function renderAssessorTable() {
                 <td class="action-cell">
                     <button class="edit-assessor-btn" data-index="${index}">Edit</button>
                     <button class="delete-assessor-btn" data-index="${index}">Delete</button>
-                </td>
+                  </td>
             `;
             DOM.assessorTbody.appendChild(row);
         });
@@ -1211,37 +1352,37 @@ function handleDeleteAssessor(e) {
 }
 
 function syncAssignedStudentIds() {
-    assessorList.forEach(assessor => {
+    fullAssessorList.forEach(assessor => {
         assessor.assignedStudentIds = [];
     });
 
-    studentList.forEach(student => {
+    fullStudentList.forEach(student => {
         if (student.assigned_assessor && student.assigned_assessor !== '—' && student.assigned_assessor !== '') {
-            const assessor = assessorList.find(a => a.name === student.assigned_assessor);
-            if (assessor && !assessor.assignedStudentIds.includes(student.id)) {
-                assessor.assignedStudentIds.push(student.id);
+            const assessor = fullAssessorList.find(a => a.name === student.assigned_assessor);
+            if (assessor && !assessor.assignedStudentIds.includes(student.student_id.toString())) {
+                assessor.assignedStudentIds.push(student.student_id.toString());
             }
         }
     });
 }
 
 function enableEditAssessorRow(index) {
-    const assessor = assessorList[index];
+    const assessor = fullAssessorList[index];
     const row = DOM.assessorTbody.querySelector(`tr[data-assessor-index="${index}"]`);
     if (!row) return;
 
     row.innerHTML = `
-        <td><input type="text" value="${assessor.id || ''}" id="edit_assessor_id_${index}" style="width:70px; padding:3px;" readonly></td>
+        <td class="assessor_id" style="color: rgba(255,255,255,0.5); font-style: italic;">—</td>
         <td><input type="text" value="${assessor.name || ''}" id="edit_assessor_name_${index}" style="width:100px; padding:3px;"></td>
         <td><input type="text" value="${assessor.role || ''}" id="edit_assessor_role_${index}" style="width:100px; padding:3px;"></td>
         <td><input type="text" value="${assessor.dept || ''}" id="edit_assessor_dept_${index}" style="width:100px; padding:3px;"></td>
         <td><input type="email" value="${assessor.email || ''}" id="edit_assessor_email_${index}" style="width:120px; padding:3px;"></td>
         <td><input type="tel" value="${assessor.contact || ''}" id="edit_assessor_contact_${index}" style="width:100px; padding:3px;"></td>
-        <td><input type="text" value="${assessor.assignedStudentIds ? assessor.assignedStudentIds.join(', ') : ''}" id="edit_assessor_students_${index}" style="width:100px; padding:3px;" placeholder="Student IDs (comma)"></td>
+        <td class="assigned-students-placeholder" style="color: rgba(255,255,255,0.5); font-style: italic;">—</td>
         <td class="action-cell">
             <button class="table-btn save-assessor-btn" data-index="${index}">Save</button>
             <button class="table-btn cancel-assessor-btn" data-index="${index}">Cancel</button>
-        </td>
+          </td>
     `;
 
     document.querySelector(`.save-assessor-btn[data-index="${index}"]`).addEventListener('click', () => saveAssessorEdit(index));
@@ -1249,14 +1390,26 @@ function enableEditAssessorRow(index) {
 }
 
 async function saveAssessorEdit(index) {
-    const assessor = assessorList[index];
+    const assessor = fullAssessorList[index];
+
+    const email = document.getElementById(`edit_assessor_email_${index}`).value;
+    if (!validateEmail(email)) {
+        alert('Invalid email format');
+        return;
+    }
+
+    const contact = document.getElementById(`edit_assessor_contact_${index}`).value;
+    if (contact && !validateContact(contact)) {
+        alert('Invalid contact format. Use: 012-345-6789');
+        return;
+    }
 
     const updatedAssessor = {
         user_id: assessor.user_id,
-        assessor_id: parseInt(assessor.id),
+        assessor_id: parseInt(assessor.raw_id),
         username: document.getElementById(`edit_assessor_name_${index}`).value,
-        email: document.getElementById(`edit_assessor_email_${index}`).value,
-        contact: document.getElementById(`edit_assessor_contact_${index}`).value,
+        email: email,
+        contact: contact,
         department: document.getElementById(`edit_assessor_dept_${index}`).value,
         assessor_role: document.getElementById(`edit_assessor_role_${index}`).value
     };
@@ -1274,8 +1427,8 @@ async function saveAssessorEdit(index) {
 
 async function deleteAssessor(index) {
     if (confirm('Are you sure you want to delete this assessor?')) {
-        const assessor = assessorList[index];
-        const result = await API.deleteAssessor(parseInt(assessor.id));
+        const assessor = fullAssessorList[index];
+        const result = await API.deleteAssessor(parseInt(assessor.raw_id));
 
         if (result.success) {
             await loadDataFromAPI();
@@ -1302,52 +1455,62 @@ function renderAssessorDashboard(assessor) {
     document.getElementById('assessorNameDisplay').textContent = assessor.name;
 
     const assignedIds = assessor.assignedStudentIds || [];
-    const assignedStudents = assignedIds.map(id => studentList.find(s => s.id === id)).filter(Boolean);
+    const assignedStudents = assignedIds.map(id => fullStudentList.find(s => s.student_id == id)).filter(Boolean);
 
     const pending = [];
     const completed = [];
 
     assignedStudents.forEach(student => {
-        if (checkIfStudentEvaluated(student.id, assessor.id)) {
-            const evalData = assessorEvaluations[`${assessor.id}_${student.id}`];
+        if (checkIfStudentEvaluated(student.student_id, assessor.raw_id)) {
+            const evalData = assessorEvaluations[`${assessor.raw_id}_${student.student_id}`];
             completed.push({ ...student, evaluation: evalData });
         } else {
             pending.push(student);
         }
     });
 
+    // Get only the latest 3 pending students (most recent by student_id)
+    const latestPending = [...pending].sort((a, b) => b.student_id - a.student_id).slice(0, 3);
+    // Get only the latest 3 completed students (most recent by evaluation date or student_id)
+    const latestCompleted = [...completed].sort((a, b) => {
+        // Sort by evaluation date if available, otherwise by student_id
+        const dateA = a.evaluation?.evaluatedAt ? new Date(a.evaluation.evaluatedAt) : new Date(0);
+        const dateB = b.evaluation?.evaluatedAt ? new Date(b.evaluation.evaluatedAt) : new Date(0);
+        return dateB - dateA;
+    }).slice(0, 3);
+
     document.getElementById('pendingCount').textContent = pending.length;
     document.getElementById('completedCount').textContent = completed.length;
 
-    renderPendingTable(pending, assessor);
-    renderCompletedTable(completed, assessor);
+    renderPendingTable(latestPending, assessor);
+    renderCompletedTable(latestCompleted, assessor);
 }
 
 function renderPendingTable(pending, assessor) {
     if (!DOM.pendingTbody) return;
 
     if (pending.length === 0) {
-        DOM.pendingTbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: #101b72;">No pending evaluations</td></tr>`;
+        DOM.pendingTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color: #101b72;">No pending evaluations</td></tr>`;
         return;
     }
 
     DOM.pendingTbody.innerHTML = pending.map(student => `
-            <tr data-student-id="${student.id}">
-                <td>${escapeHtml(student.id)}</td>
-                <td>${escapeHtml(student.name)}</td>
-                <td>${escapeHtml(student.programme)}</td>
-                <td>${escapeHtml(student.company)}</td>
-                <td>${escapeHtml(student.year)}</td>
-                <td>${escapeHtml(student.email)}</td>
-                <td>${escapeHtml(student.contact)}</td>
-                <td>${escapeHtml(student.status)}</td>
-                <td class="action-cell">
-                    <button class="evaluate-btn" data-student-id="${student.id}" data-assessor-id="${assessor.id}">
-                        Evaluate
-                    </button>
-                 </td>
-             </tr>
-        `).join('');
+        <tr data-student-id="${student.student_id}">
+            <td>${escapeHtml(student.id)}</td>
+            <td>${escapeHtml(student.name)}</td>
+            <td>${escapeHtml(student.programme)}</td>
+            <td>${escapeHtml(student.company)}</td>
+            <td>${escapeHtml(student.year)}</td>
+            <td>${escapeHtml(student.email)}</td>
+            <td>${escapeHtml(student.contact)}</td>
+            <td>${escapeHtml(student.status)}</td>
+            <td class="action-cell">
+                <button class="evaluate-btn" data-student-id="${student.student_id}" data-assessor-id="${assessor.raw_id}">
+                    Evaluate
+                </button>
+              </td>
+            </tr>
+    `).join('');
 
     document.querySelectorAll('.evaluate-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -1358,11 +1521,12 @@ function renderPendingTable(pending, assessor) {
     });
 }
 
+
 function renderCompletedTable(completed, assessor) {
     if (!DOM.completedTbody) return;
 
     if (completed.length === 0) {
-        DOM.completedTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color: #101b72;">No completed evaluations</td></tr>`;
+        DOM.completedTbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color: #101b72;">No completed evaluations</td></tr>`;
         return;
     }
 
@@ -1372,23 +1536,23 @@ function renderCompletedTable(completed, assessor) {
         const evalDate = student.evaluation?.evaluatedAt ? new Date(student.evaluation.evaluatedAt).toLocaleDateString('en-GB') : '—';
 
         return `
-                <tr>
-                    <td>${escapeHtml(student.id)}</td>
-                    <td>${escapeHtml(student.name)}</td>
-                    <td>${escapeHtml(student.programme)}</td>
-                    <td>${escapeHtml(student.company)}</td>
-                    <td>${escapeHtml(student.year)}</td>
-                    <td>${escapeHtml(student.email)}</td>
-                    <td>${escapeHtml(student.contact)}</td>
-                    <td class="${scoreClass}">${score.toFixed(1)}%</td>
-                    <td>${evalDate}</td>
-                    <td class="action-cell">
-                        <button class="view-btn" data-student-id="${student.id}" data-assessor-id="${assessor.id}">
-                            View
-                        </button>
-                    </td>
-                </tr>
-            `;
+            <tr>
+                <td>${escapeHtml(student.id)}</td>
+                <td>${escapeHtml(student.name)}</td>
+                <td>${escapeHtml(student.programme)}</td>
+                <td>${escapeHtml(student.company)}</td>
+                <td>${escapeHtml(student.year)}</td>
+                <td>${escapeHtml(student.email)}</td>
+                <td>${escapeHtml(student.contact)}</td>
+                <td class="${scoreClass}">${score.toFixed(1)}%</td>
+                <td>${evalDate}</td>
+                <td class="action-cell">
+                    <button class="view-btn" data-student-id="${student.student_id}" data-assessor-id="${assessor.raw_id}">
+                        View
+                    </button>
+                  </td>
+            </tr>
+        `;
     }).join('');
 
     document.querySelectorAll('.view-btn').forEach(btn => {
@@ -1405,7 +1569,6 @@ function renderCompletedTable(completed, assessor) {
 // ADD UPDATE ASSESSOR API METHOD
 // ============================================
 
-// Add this to API if not already present
 if (!API.updateAssessor) {
     API.updateAssessor = async function (assessorData) {
         try {
