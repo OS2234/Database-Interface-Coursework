@@ -24,6 +24,38 @@ let fullAssessorList = [];
 let assessorEvaluations = {};
 let actualPasswords = {};
 
+
+// ============================================
+// AUTO STATUS CHECK 
+// ============================================
+async function checkAndUpdateStatuses() {
+    try {
+        // Call a PHP endpoint to update statuses
+        const response = await fetch(API_BASE + 'update_status.php');
+        const result = await response.json();
+
+        if (result.success && result.updated_count > 0) {
+            console.log(`Auto-updated ${result.updated_count} student statuses`);
+            await loadDataFromAPI();
+            renderAllTables();
+        }
+        return result;
+    } catch (error) {
+        console.error('Error checking status updates:', error);
+        return null;
+    }
+}
+
+// Call status check on page load and every hour
+setInterval(() => {
+    checkAndUpdateStatuses();
+}, 60 * 60 * 1000);
+
+// Also check when page loads
+setTimeout(() => {
+    checkAndUpdateStatuses();
+}, 2000);
+
 // ============================================
 // VALIDATION FUNCTIONS
 // ============================================
@@ -94,7 +126,6 @@ async function loadDataFromAPI() {
         const assessorsArray = Array.isArray(assessors) ? assessors : [];
         const usersArray = Array.isArray(users) ? users : [];
 
-        // Transform students data
         fullStudentList = studentsArray.map(s => ({
             id: s.formatted_id || 'S' + s.student_id,
             raw_id: s.student_id,
@@ -113,7 +144,6 @@ async function loadDataFromAPI() {
             assigned_assessor_id: s.assigned_assessor
         }));
 
-        // Transform assessors data
         fullAssessorList = assessorsArray.map(a => ({
             id: a.formatted_id || 'A' + a.assessor_id,
             raw_id: a.assessor_id,
@@ -127,12 +157,10 @@ async function loadDataFromAPI() {
             user_id: a.user_id
         }));
 
-        // Transform accounts data - FIXED to preserve actual passwords
         fullAccountList = usersArray.map(u => {
             const userId = u.user_id;
             let displayPassword = actualPasswords[userId];
 
-            // Check if we have a stored password for this user
             const storedPassword = localStorage.getItem(`user_password_${userId}`);
             if (storedPassword) {
                 displayPassword = storedPassword;
@@ -322,9 +350,9 @@ function logout() {
     alert('Logged out successfully');
 }
 
-// ===========
+// =============================
 // SETUPS
-// ===========
+// =============================
 function setupLoginForm() {
     const form = document.querySelector('.form-box-login form');
     if (!form) return;
@@ -375,7 +403,6 @@ function setupEventListeners() {
         });
     }
 
-    // Use DOM elements directly with more reliable selectors
     const addStudentBtn = document.getElementById('addStudentBtn');
     const addAssessorBtn = document.getElementById('addAssessorBtn');
     const addAccountBtn = document.getElementById('addAccountBtn');
@@ -647,7 +674,6 @@ function renderAccountTable() {
 
     DOM.accountTbody.innerHTML = '';
 
-    // Get last 3 accounts
     const lastThreeAccounts = fullAccountList.slice(0, 3);
 
     if (lastThreeAccounts.length === 0) {
@@ -780,15 +806,15 @@ async function saveAccountEdit(index) {
             actualPasswords[oldAccount.user_id] = newPlainPassword;
             localStorage.setItem(`user_password_${oldAccount.user_id}`, newPlainPassword);
             saveStoredPasswords();
-            alert(`✅ Account updated successfully! New Password: ${newPlainPassword}`);
+            alert(`Account updated successfully! New Password: ${newPlainPassword}`);
         } else {
-            alert('✅ Account updated successfully!');
+            alert('Account updated successfully!');
         }
 
         await loadDataFromAPI();
         renderAllTables();
     } else {
-        alert('❌ Error updating account: ' + (result.error || 'Unknown error'));
+        alert('Error updating account: ' + (result.error || 'Unknown error'));
     }
 }
 
@@ -832,11 +858,7 @@ function insertStudentAddForm() {
     addRow.className = 'add-form-row';
     addRow.id = 'student-add-form-row';
 
-    const statusOptions = ['Ongoing', 'Pending', 'Evaluated'];
-    const statusDropdown = `<select id="add_status" class="add-dropdown" style="width:100px; padding:4px; border-radius:4px;">
-        ${statusOptions.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
-    </select>`;
-
+    // Remove status options - status will be auto-calculated
     const programmeOptions = ['Computer Science', 'Business', 'Engineering'];
     const programmeDropdown = `<select id="add_programme" class="add-dropdown" style="width:120px; padding:4px; border-radius:4px;">
         <option value="">-- Select Programme --</option>
@@ -859,15 +881,15 @@ function insertStudentAddForm() {
         <td style="min-width: 200px;">
             <input type="date" id="add_internship_start" style="width: 120px; margin-right: 5px;"> to 
             <input type="date" id="add_internship_end" style="width: 120px;">
-          </td>
-        <td class="status-cell">${statusDropdown}</td>
+        </td>
+        <td class="status-cell"></td>
         <td class="assessor-cell">${assessorDropdown}</td>
         <td class="action-cell">
             <div class="action-buttons">
                 <button class="add-save-btn" id="saveStudentAddBtn">Save</button>
                 <button class="add-cancel-btn" id="cancelStudentAddBtn">Cancel</button>
             </div>
-          </td>
+        </td>
     `;
 
     if (DOM.studentTbody.firstChild) {
@@ -920,7 +942,18 @@ async function saveStudentAdd() {
 
     const startDate = document.getElementById('add_internship_start').value;
     const endDate = document.getElementById('add_internship_end').value;
-    const newStatus = document.getElementById('add_status').value;
+
+    // Validate date range
+    if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        if (end <= start) {
+            alert('End date must be after start date');
+            document.getElementById('add_internship_end').focus();
+            return;
+        }
+    }
+
     const newAssessorName = document.getElementById('add_assessor').value;
 
     const selectedAssessor = fullAssessorList.find(a => a.name === newAssessorName);
@@ -934,7 +967,6 @@ async function saveStudentAdd() {
         student_email: email,
         student_contact: contact,
         assigned_assessor: assessorId,
-        status: newStatus,
         start_date: startDate || null,
         end_date: endDate || null
     };
@@ -1070,7 +1102,7 @@ function enableEditStudentRow(index) {
             <input type="date" value="${student.start_date || ''}" id="edit_start_${index}" style="width: 120px; margin-right: 5px;"> to 
             <input type="date" value="${student.end_date || ''}" id="edit_end_${index}" style="width: 120px;">
           </td>
-        <td class="status-cell">${statusDropdown}</td>
+        <td class="status-cell">${escapeHtml(student.status || '—')}</td>
         <td class="assessor-cell">${assessorDropdown}</td>
         <td class="action-cell">
             <button class="table-btn save-student-btn" data-index="${index}">Save</button>
@@ -1109,6 +1141,20 @@ async function saveStudentEdit(index) {
         return;
     }
 
+    const startDate = document.getElementById(`edit_start_${index}`).value;
+    const endDate = document.getElementById(`edit_end_${index}`).value;
+
+    // Validate date range
+    if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        if (end <= start) {
+            alert('End date must be after start date');
+            document.getElementById(`edit_end_${index}`).focus();
+            return;
+        }
+    }
+
     const newAssessorName = document.getElementById(`edit_assigned_assessor_${index}`).value;
     const selectedAssessor = fullAssessorList.find(a => a.name === newAssessorName);
     const assessorId = selectedAssessor ? parseInt(selectedAssessor.raw_id) : null;
@@ -1122,9 +1168,8 @@ async function saveStudentEdit(index) {
         student_email: email,
         student_contact: contact,
         assigned_assessor: assessorId,
-        status: document.getElementById(`edit_status_${index}`).value,
-        start_date: document.getElementById(`edit_start_${index}`).value || null,
-        end_date: document.getElementById(`edit_end_${index}`).value || null
+        start_date: startDate || null,
+        end_date: endDate || null
     };
 
     const result = await API.updateStudent(updatedStudent);

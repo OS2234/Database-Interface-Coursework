@@ -1,4 +1,5 @@
 <?php
+
 require_once __DIR__ . '/config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
@@ -33,6 +34,10 @@ switch($method) {
         ]);
         
         echo json_encode(['success' => true, 'internship_id' => $pdo->lastInsertId()]);
+        break;
+        
+    default:
+        echo json_encode(['success' => false, 'error' => 'Method not allowed']);
         break;
 }
 ?>

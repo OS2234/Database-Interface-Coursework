@@ -1,3 +1,4 @@
+
 const DOM = {
     // Containers
     wrapper: document.getElementById('loginPopupWrapper'),
@@ -50,21 +51,6 @@ const State = {
     userRole: null,
     isEditMode: false,
     assessorEvaluations: {}
-};
-
-const EVALUATION_CRITERIA = [
-    { name: "Undertaking Tasks/Projects", weight: 10, key: "undertaking" },
-    { name: "Health and Safety Requirements at the Workplace", weight: 10, key: "health_safety" },
-    { name: "Connectivity and Use of Theoretical Knowledge", weight: 10, key: "connectivity" },
-    { name: "Presentation of the Report as a Written Document", weight: 15, key: "presentation" },
-    { name: "Clarity of Language and Illustration", weight: 10, key: "clarity" },
-    { name: "Lifelong Learning Activities", weight: 15, key: "learning" },
-    { name: "Project Management", weight: 15, key: "project" },
-    { name: "Time Management", weight: 15, key: "time" }
-];
-
-const STORAGE_KEYS = {
-    EVALUATIONS: 'assessorEvaluations'
 };
 
 // ============================================

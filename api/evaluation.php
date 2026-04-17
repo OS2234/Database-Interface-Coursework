@@ -1,77 +1,139 @@
 <?php
+
 require_once __DIR__ . '/config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
+/**
+ * Validates internship end date
+ */
+function validateInternshipPeriod($pdo, $studentId, $assessorId) {
+    $stmt = $pdo->prepare("
+        SELECT i.end_date, i.status
+        FROM internship i
+        WHERE i.student_id = ? AND i.assessor_id = ?
+    ");
+    $stmt->execute([$studentId, $assessorId]);
+    $internship = $stmt->fetch();
+    
+    if ($internship && $internship['end_date']) {
+        $endDate = new DateTime($internship['end_date']);
+        $today = new DateTime();
+        if ($endDate < $today) {
+            return ['valid' => false, 'error' => 'Cannot evaluate: Internship has already ended'];
+        }
+    }
+    
+    return ['valid' => true];
+}
+
+/**
+ * Creates or updates an evaluation
+ */
+function saveEvaluation($pdo, $data) {
+    $pdo->beginTransaction();
+    
+    try {
+        // Check if evaluation already exists
+        $checkStmt = $pdo->prepare("
+            SELECT evaluation_id FROM evaluation 
+            WHERE student_id = ? AND assessor_id = ?
+        ");
+        $checkStmt->execute([$data['student_id'], $data['assessor_id']]);
+        $existing = $checkStmt->fetch();
+        
+        $scoresJson = json_encode($data['scores']);
+        
+        if ($existing) {
+            // Update existing evaluation
+            $stmt = $pdo->prepare("
+                UPDATE evaluation 
+                SET scores = ?, weighted_total = ?, remarks = ?, evaluated_at = NOW()
+                WHERE student_id = ? AND assessor_id = ?
+            ");
+            $stmt->execute([
+                $scoresJson,
+                $data['weightedTotal'],
+                $data['remarks'],
+                $data['student_id'],
+                $data['assessor_id']
+            ]);
+        } else {
+            // Insert new evaluation
+            $stmt = $pdo->prepare("
+                INSERT INTO evaluation (student_id, assessor_id, scores, weighted_total, remarks, evaluated_at)
+                VALUES (?, ?, ?, ?, ?, NOW())
+            ");
+            $stmt->execute([
+                $data['student_id'],
+                $data['assessor_id'],
+                $scoresJson,
+                $data['weightedTotal'],
+                $data['remarks']
+            ]);
+        }
+        
+        // Update internship status to 'Evaluated'
+        $updateStmt = $pdo->prepare("
+            UPDATE internship 
+            SET status = 'Evaluated' 
+            WHERE student_id = ? AND assessor_id = ?
+        ");
+        $updateStmt->execute([$data['student_id'], $data['assessor_id']]);
+        
+        $pdo->commit();
+        return ['success' => true];
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+}
+
+// ============================================
+// REQUEST HANDLER
+// ============================================
+
 switch($method) {
     case 'GET':
-        $internshipId = $_GET['internship_id'] ?? null;
+        $studentId = $_GET['student_id'] ?? null;
+        $assessorId = $_GET['assessor_id'] ?? null;
         
-        if ($internshipId) {
+        if ($studentId && $assessorId) {
             $stmt = $pdo->prepare("
-                SELECT ar.*, ac.criteria_name, ac.weightage,
-                       fr.total_marks, fr.evaluated_date, fr.remarks as final_remarks
-                FROM assessment_result ar
-                JOIN assessment_criteria ac ON ar.criteria_id = ac.criteria_id
-                LEFT JOIN final_result fr ON ar.result_id = fr.result_id
-                WHERE ar.internship_id = ?
+                SELECT e.*, u.username as assessor_name
+                FROM evaluation e
+                JOIN assessor a ON e.assessor_id = a.assessor_id
+                JOIN user u ON a.user_id = u.user_id
+                WHERE e.student_id = ? AND e.assessor_id = ?
             ");
-            $stmt->execute([$internshipId]);
-            echo json_encode($stmt->fetchAll());
+            $stmt->execute([$studentId, $assessorId]);
+            echo json_encode($stmt->fetch());
+        } else {
+            echo json_encode(null);
         }
         break;
         
     case 'POST':
         $data = json_decode(file_get_contents('php://input'), true);
         
-        $stmt = $pdo->prepare("
-            SELECT internship_id FROM internship 
-            WHERE student_id = ? AND assessor_id = ?
-        ");
-        $stmt->execute([$data['student_id'], $data['assessor_id']]);
-        $internship = $stmt->fetch();
-        
-        if (!$internship) {
-            $stmt = $pdo->prepare("
-                INSERT INTO internship (student_id, assessor_id, company_name, start_date, end_date, status)
-                VALUES (?, ?, ?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 2 MONTH), 'Ongoing')
-            ");
-            $stmt->execute([$data['student_id'], $data['assessor_id'], $data['company_name'] ?? 'TBD']);
-            $internshipId = $pdo->lastInsertId();
-        } else {
-            $internshipId = $internship['internship_id'];
+        // Validate internship period
+        $validation = validateInternshipPeriod($pdo, $data['student_id'], $data['assessor_id']);
+        if (!$validation['valid']) {
+            echo json_encode(['success' => false, 'error' => $validation['error']]);
+            break;
         }
         
-        $resultIds = [];
-        foreach ($data['scores'] as $criteriaKey => $score) {
-            $stmt = $pdo->prepare("
-                SELECT criteria_id FROM assessment_criteria WHERE criteria_name LIKE ?
-            ");
-            $stmt->execute(["%$criteriaKey%"]);
-            $criteria = $stmt->fetch();
-            
-            if ($criteria) {
-                $stmt2 = $pdo->prepare("
-                    INSERT INTO assessment_result (internship_id, criteria_id, marks_obtained, remark)
-                    VALUES (?, ?, ?, ?)
-                ");
-                $stmt2->execute([$internshipId, $criteria['criteria_id'], $score, $data['remarks']]);
-                $resultIds[] = $pdo->lastInsertId();
-            }
+        try {
+            $result = saveEvaluation($pdo, $data);
+            echo json_encode($result);
+        } catch (Exception $e) {
+            error_log('Evaluation POST error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
+        break;
         
-        if (!empty($resultIds)) {
-            $stmt = $pdo->prepare("
-                INSERT INTO final_result (internship_id, result_id, total_marks, evaluated_date, remarks)
-                VALUES (?, ?, ?, CURDATE(), ?)
-            ");
-            $stmt->execute([$internshipId, $resultIds[0], $data['weightedTotal'], $data['remarks']]);
-        }
-        
-        $stmt = $pdo->prepare("UPDATE internship SET status = 'Evaluated' WHERE internship_id = ?");
-        $stmt->execute([$internshipId]);
-        
-        echo json_encode(['success' => true]);
+    default:
+        echo json_encode(['success' => false, 'error' => 'Method not allowed']);
         break;
 }
 ?>

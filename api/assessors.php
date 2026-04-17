@@ -1,30 +1,42 @@
 <?php
-// assessors.php
 require_once 'config.php';
 
-$method = $_SERVER['REQUEST_METHOD'];
+// ============================================
+// SERVICE CLASSES
+// ============================================
 
-function getSequentialAssessorIds($pdo) {
-    $stmt = $pdo->query("
-        SELECT assessor_id 
-        FROM assessor 
-        ORDER BY assessor_id ASC
-    ");
-    $allIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+class AssessorIdGenerator {
+    private $pdo;
+    private $cache = [];
     
-    $sequentialMap = [];
-    $counter = 1;
-    foreach ($allIds as $dbId) {
-        $sequentialMap[$dbId] = $counter++;
+    public function __construct($pdo) {
+        $this->pdo = $pdo;
     }
     
-    return $sequentialMap;
+    public function getAssessorIds() {
+        if (empty($this->cache)) {
+            $stmt = $this->pdo->query("SELECT assessor_id FROM assessor ORDER BY assessor_id ASC");
+            $allIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            $counter = 1;
+            foreach ($allIds as $dbId) {
+                $this->cache[$dbId] = $counter++;
+            }
+        }
+        return $this->cache;
+    }
 }
+
+// ============================================
+// MAIN REQUEST HANDLER
+// ============================================
+
+$method = $_SERVER['REQUEST_METHOD'];
 
 switch($method) {
     case 'GET':
         try {
-            $sequentialMap = getSequentialAssessorIds($pdo);
+            $idGenerator = new AssessorIdGenerator($pdo);
+            $sequentialMap = $idGenerator->getAssessorIds();
             
             $stmt = $pdo->query("
                 SELECT 
@@ -73,45 +85,39 @@ switch($method) {
         $data = json_decode(file_get_contents('php://input'), true);
         
         try {
+            // Update user table
             $userUpdates = [];
             $userParams = [];
             
-            if (isset($data['username'])) {
-                $userUpdates[] = "username = ?";
-                $userParams[] = $data['username'];
-            }
-            if (isset($data['email'])) {
-                $userUpdates[] = "email = ?";
-                $userParams[] = $data['email'];
-            }
-            if (isset($data['contact'])) {
-                $userUpdates[] = "contact = ?";
-                $userParams[] = $data['contact'];
+            $userFieldMap = ['username', 'email', 'contact'];
+            foreach ($userFieldMap as $field) {
+                if (isset($data[$field])) {
+                    $userUpdates[] = "$field = ?";
+                    $userParams[] = $data[$field];
+                }
             }
             
             if (!empty($userUpdates)) {
                 $userParams[] = $data['user_id'];
-                $sql = "UPDATE user SET " . implode(", ", $userUpdates) . " WHERE user_id = ?";
-                $stmt = $pdo->prepare($sql);
+                $stmt = $pdo->prepare("UPDATE user SET " . implode(", ", $userUpdates) . " WHERE user_id = ?");
                 $stmt->execute($userParams);
             }
             
+            // Update assessor table
             $assessorUpdates = [];
             $assessorParams = [];
             
-            if (isset($data['department'])) {
-                $assessorUpdates[] = "department = ?";
-                $assessorParams[] = $data['department'];
-            }
-            if (isset($data['assessor_role'])) {
-                $assessorUpdates[] = "role = ?";
-                $assessorParams[] = $data['assessor_role'];
+            $assessorFieldMap = ['department' => 'department', 'assessor_role' => 'role'];
+            foreach ($assessorFieldMap as $inputField => $dbField) {
+                if (isset($data[$inputField])) {
+                    $assessorUpdates[] = "$dbField = ?";
+                    $assessorParams[] = $data[$inputField];
+                }
             }
             
             if (!empty($assessorUpdates)) {
                 $assessorParams[] = $data['assessor_id'];
-                $sql = "UPDATE assessor SET " . implode(", ", $assessorUpdates) . " WHERE assessor_id = ?";
-                $stmt = $pdo->prepare($sql);
+                $stmt = $pdo->prepare("UPDATE assessor SET " . implode(", ", $assessorUpdates) . " WHERE assessor_id = ?");
                 $stmt->execute($assessorParams);
             }
             

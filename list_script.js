@@ -19,7 +19,6 @@ const globalCreateExportButton = (typeof createExportButton !== 'undefined') ? c
 // SMART SEARCH INTEGRATION
 // ============================================
 
-// Enhanced render with smart search
 function renderAdminAccountsWithSmartSearch() {
     const searchTerm = document.getElementById('searchAccounts')?.value || '';
     const searchFields = ['username', 'email', 'userRole', 'contact'];
@@ -145,7 +144,6 @@ function renderAdminAssessorsWithSmartSearch() {
     setTimeout(() => setTableHeight('assessorsScrollableTable'), 50);
 }
 
-// Add debounced search event listeners
 function setupSmartSearchListeners() {
     const searcher = globalSmartSearch;
     if (!searcher) {
@@ -1115,6 +1113,17 @@ async function updateStudentFromModal() {
     const contact = document.getElementById('edit_student_contact').value;
     const status = document.getElementById('edit_status').value;
     const newAssessorName = document.getElementById('edit_assigned_assessor').value;
+    const startDate = document.getElementById('edit_start_date').value;
+    const endDate = document.getElementById('edit_end_date').value;
+
+    if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        if (end <= start) {
+            alert('End date must be after start date');
+            return false;
+        }
+    }
 
     if (email && !validateEmail(email)) {
         alert('Invalid email format. Please enter a valid email address.');
@@ -1416,34 +1425,21 @@ function observeTableHeightChanges() {
 // INITIALIZATION
 // ============================================
 async function init() {
-    console.log('=== LIST PAGE INITIALIZING ===');
-
-    // First load data from API
     await loadDataFromAPI();
-    console.log('Data loaded, students:', studentsList.length);
-
-    // Load notes from localStorage
     loadNotes();
-
-    // Setup event listeners
     setupLogin();
     setupEditModalEvents();
     initUI();
 
-    // Check login state (data is already loaded)
     await checkLoginState();
 
-    // Only setup enhanced features if dependencies are available
     if (typeof window.smartSearch !== 'undefined' || globalSmartSearch) {
         setupSmartSearchListeners();
         addExportButtonsToList();
     } else {
         console.warn('Enhanced features not available, using basic mode');
     }
-
-    // Set table heights after render
     setTimeout(() => observeTableHeightChanges(), 100);
 }
 
-// Make sure to call init
 init();

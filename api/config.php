@@ -1,5 +1,9 @@
 <?php
-// config.php
+
+// ============================================
+// CORS HEADERS
+// ============================================
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
@@ -11,18 +15,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Database configuration
-$host = 'localhost';
-$port = 3306;
-$dbname = 'student_records';
-$username = 'root';
-$password = 'root';  
+// ============================================
+// DATABASE CONFIGURATION
+// ============================================
+
+define('DB_HOST', 'localhost');
+define('DB_PORT', 3306);
+define('DB_NAME', 'student_records');
+define('DB_USER', 'root');
+define('DB_PASS', 'root');
+
+// ============================================
+// DATABASE CONNECTION
+// ============================================
 
 try {
-    $pdo = new PDO("mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-    $pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+    $pdo = new PDO(
+        "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4",
+        DB_USER,
+        DB_PASS,
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false
+        ]
+    );
 } catch(PDOException $e) {
     error_log('Database connection failed: ' . $e->getMessage());
     echo json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]);
