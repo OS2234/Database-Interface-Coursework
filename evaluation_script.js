@@ -70,7 +70,6 @@ function getCurrentFormData() {
     return { scores, remarks };
 }
 
-// Function to check for and restore draft
 function checkAndRestoreDraft(studentId, assessorId) {
     if (!studentId || !assessorId) return false;
 
@@ -614,7 +613,7 @@ function submitEvaluation() {
 
     if (window.draftManager) {
         window.draftManager.clearDraft();
-        window.draftManager.showIndicator('✓ Evaluation submitted, draft cleared', '#4caf50');
+        window.draftManager.showIndicator('Evaluation submitted, draft cleared', '#4caf50');
     }
     cleanupAutoSave();
 

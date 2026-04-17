@@ -23,7 +23,6 @@ function renderAdminAccountsWithSmartSearch() {
     const searchTerm = document.getElementById('searchAccounts')?.value || '';
     const searchFields = ['username', 'email', 'userRole', 'contact'];
 
-    // Use globalSmartSearch if available
     const searcher = globalSmartSearch;
 
     let filtered = accountsList;
@@ -179,7 +178,6 @@ function setupSmartSearchListeners() {
 // ============================================
 
 function addExportButtonsToList() {
-    // Check if createExportButton is available
     const exportBtnMaker = globalCreateExportButton;
     if (!exportBtnMaker) {
         console.warn('createExportButton not available yet, will retry...');
@@ -189,20 +187,20 @@ function addExportButtonsToList() {
 
     const accountsFilterGroup = document.querySelector('#accountsScrollableTable')?.closest('.table-card')?.querySelector('.filter-group');
     if (accountsFilterGroup && !accountsFilterGroup.querySelector('.export-btn')) {
-        const exportBtn = exportBtnMaker(() => exportAccountsToCSV(), '📊 Export CSV');
+        const exportBtn = exportBtnMaker(() => exportAccountsToCSV(), 'Export CSV');
         exportBtn.style.marginLeft = 'auto';
         accountsFilterGroup.appendChild(exportBtn);
     }
 
     const studentsFilterGroup = document.querySelector('#studentsScrollableTable')?.closest('.table-card')?.querySelector('.filter-group');
     if (studentsFilterGroup && !studentsFilterGroup.querySelector('.export-btn')) {
-        const exportBtn = exportBtnMaker(() => exportStudentsToCSV(), '📊 Export CSV');
+        const exportBtn = exportBtnMaker(() => exportStudentsToCSV(), 'Export CSV');
         studentsFilterGroup.appendChild(exportBtn);
     }
 
     const assessorsFilterGroup = document.querySelector('#assessorsScrollableTable')?.closest('.table-card')?.querySelector('.filter-group');
     if (assessorsFilterGroup && !assessorsFilterGroup.querySelector('.export-btn')) {
-        const exportBtn = exportBtnMaker(() => exportAssessorsToCSV(), '📊 Export CSV');
+        const exportBtn = exportBtnMaker(() => exportAssessorsToCSV(), 'Export CSV');
         assessorsFilterGroup.appendChild(exportBtn);
     }
 }
@@ -286,9 +284,6 @@ function exportAssessorsToCSV() {
 // ============================================
 // STORAGE HELPERS (for notes only)
 // ============================================
-const STORAGE_KEYS = {
-    NOTES: 'studentProgressNotes'
-};
 
 function loadNotes() {
     const saved = localStorage.getItem(STORAGE_KEYS.NOTES);

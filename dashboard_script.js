@@ -835,7 +835,6 @@ async function deleteAccount(index) {
 }
 
 function generateDisplayPassword(username, userId) {
-    // First check if we have a stored password for this user
     const storedPassword = localStorage.getItem(`user_password_${userId}`);
     if (storedPassword) {
         return storedPassword;
@@ -1514,11 +1513,8 @@ function renderAssessorDashboard(assessor) {
         }
     });
 
-    // Get only the latest 3 pending students (most recent by student_id)
     const latestPending = [...pending].sort((a, b) => b.student_id - a.student_id).slice(0, 3);
-    // Get only the latest 3 completed students (most recent by evaluation date or student_id)
     const latestCompleted = [...completed].sort((a, b) => {
-        // Sort by evaluation date if available, otherwise by student_id
         const dateA = a.evaluation?.evaluatedAt ? new Date(a.evaluation.evaluatedAt) : new Date(0);
         const dateB = b.evaluation?.evaluatedAt ? new Date(b.evaluation.evaluatedAt) : new Date(0);
         return dateB - dateA;
@@ -1636,8 +1632,8 @@ if (!API.updateAssessor) {
 
 async function init() {
     await loadDataFromAPI();
-    renderAllTables();
     setupLoginForm();
+    renderAllTables();
     setupEventListeners();
     observeTableChanges();
     checkLogin();
