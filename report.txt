@@ -1,0 +1,101 @@
+SYSTEM REPORT:INTERNSHIP RESULT MANAGEMENT SYSTEM
+
+
+1) INTRODUCTION
+  The Internship Result Management System is a web-based application developed to replace the existing manual, spreadsheet-based internship assessment process at the university. The system aims to improve efficiency, transparency, and accuracy by providing role-based access for Admins, Assessors, Lecturers and Supervisors. It automates mark calculation, centralizes student and internship records, and ensures standardized evaluation based on predefined weightages.
+
+2) System Requirements Summary:
+
+a.)User Management
+  -Student profiles include- Student ID, Name, Programme.
+  -Admin can add, update and delete student records.
+  -Admin can create and manage assessor accounts.
+  -Each assessor has secure login credentials and is assigned specific students.
+
+
+b.)Internship Management
+   -Admin assigns students to assessors.
+   -Admin records internship company name and other relevant details.
+   -Enables tracking of internship participation and clear assessment responsibility.
+
+c.)Internship Result Entry
+   -System automatically calculates final internship score.
+   -Assessors can add qualitative comments/justification.
+   -Weightages are fixed and non-modifiable by users.
+
+d)Result Viewing
+  -Assessors view detailed mark breakdowns for their assigned students.
+  -Admin views results for all students.
+  -Search/filter by student ID or name.
+
+3) Database Design (ER Diagram Implementation)
+The database was designed based on the ER diagram using crow's foot notation. The following main entities and relationships were implemented:
+
+Student (student_id PK, name, programme)
+
+Assessor (assessor_id PK, name, email, password_hash, role)
+
+Internship (internship_id PK, company_name, student_id FK, assessor_id FK, start_date, end_date)
+
+AssessmentCriterion (criterion_id PK, name, weightage) – preloaded with 8 fixed criteria.
+
+AssessmentResult (result_id PK, internship_id FK, criterion_id FK, score, comments, final_total)
+
+
+Key constraints:
+-Primary keys and foreign keys enforce referential integrity.
+-Weightages are read-only in the application (set at database level).
+-A student can have only one active internship per period.
+-An assessor can be assigned multiple students.
+
+
+4) Front-End Development
+
+The user interface was developed using HTML5, CSS3, and JavaScript to ensure a responsive, clean, and user-friendly experience.
+
+1)Login Page – Role-based redirection (Admin/Assessor).
+2)Admin Dashboard – Manage students, assessors, and internship assignments.
+3)Assessor Dashboard – View assigned students, enter marks, add comments.
+4)Result Viewing Page – Search/filter functionality, tabular display of marks and final scores.
+5)Consistent Styling – CSS grid/flexbox, navigation menu, and error/success messages.
+
+Input validation includes:
+
+1)Required fields.
+2)Numeric score range checking.
+3)Preventing duplicate student/assessor entries.
+4)Client-side and server-side validation.
+
+5) Back-End and Integration
+
+Server-side scripting was implemented using PHP to handle:
+
+1)Authentication – Session-based login with password hashing.
+2)Data retrieval – Dynamic population of student lists, assessor assignments, and results.
+3)Data manipulation – Insert/update/delete operations for student profiles, internship details, and assessment scores.
+4)Mark calculation – Automatic final score computation based on weightages.
+5)Database communication – MySQLi or PDO with prepared statements to prevent SQL injection.
+
+Smooth interaction between front-end and back-end ensures real-time feedback for search and filtering.
+
+6) Functionality Achieved
+  All required features are fully implemented:
+
+1)Admin: Add/edit/delete students and assessors.
+2)Admin: Assign students to assessors + record internship company.
+3)Assessor: Select assigned student → enter marks per criterion → auto final mark.
+4)Assessor: Add qualitative comments.
+5)Result viewing with search/filter.
+6)Fixed weightages enforced.
+7)No crashes, errors, or unexpected behavior during testing.
+
+7) Testing Summary
+  1)Unit testing – Each module (login, add student, enter marks, etc.) tested independently.
+  2)Integration testing – End-to-end scenarios: Admin creates student → assigns to assessor → assessor marks → results viewed.
+  3)Validation testing – Invalid inputs (e.g., marks >100) rejected with user-friendly messages.
+  4)Security – SQL injection prevention, password hashing, session protection.
+
+8) Conclusion
+The Internship Result Management System successfully meets all university requirements outlined in the COMP1044 coursework brief. It replaces manual spreadsheets with a secure, role-based web application that improves efficiency, accuracy, and transparency. The system is fully functional and well-documented.
+
+
