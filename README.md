@@ -2,7 +2,7 @@
 
 A comprehensive web-based system for managing student internships, evaluations, and assessor assignments at the University of Nottingham.
 
-## 📋 Overview
+## Overview
 
 This system provides:
 - **Administrator Dashboard** - Manage students, assessors, and user accounts
@@ -12,7 +12,7 @@ This system provides:
 - **Auto-save Drafts** - Never lose evaluation progress
 - **CSV Export** - Export data for reporting
 
-## 🛠️ Technology Stack
+## Tech Stack
 
 | Component | Technology |
 |-----------|------------|
@@ -21,7 +21,7 @@ This system provides:
 | Database | MySQL 5.7+ |
 | Server | MAMP |
 
-## 🚀 Installation Guide
+## Installation Guide
 
 ### Prerequisites
 
