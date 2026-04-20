@@ -1508,6 +1508,7 @@ function renderAssessorDashboard(assessor) {
         return dateB - dateA;
     });
 
+
     const recentCompleted = sortedCompleted.slice(0, 3);
 
     document.getElementById('pendingCount').textContent = pending.length;
@@ -1525,8 +1526,8 @@ function renderPendingTable(pending, assessor) {
         return;
     }
 
-    DOM.pendingTbody.innerHTML = pending.map(student => `
-        <tr data-student-id="${student.student_id}">
+    DOM.pendingTbody.innerHTML = pending.map((student, index) => `
+        <tr data-student-id="${student.student_id}" data-assessor-id="${assessor.raw_id}" data-row-type="pending" data-index="${index}">
             <td>${escapeHtml(student.id)}</td>
             <td>${escapeHtml(student.name)}</td>
             <td>${escapeHtml(student.programme)}</td>
@@ -1539,16 +1540,19 @@ function renderPendingTable(pending, assessor) {
                 <button class="evaluate-btn" data-student-id="${student.student_id}" data-assessor-id="${assessor.raw_id}">
                     Evaluate
                 </button>
-                </td>
-            </tr>
+            </td>
+        </tr>
     `).join('');
 
-    document.querySelectorAll('.evaluate-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            sessionStorage.setItem('evalStudentId', btn.getAttribute('data-student-id'));
-            sessionStorage.setItem('evalAssessorId', btn.getAttribute('data-assessor-id'));
-            window.location.href = 'evaluation.html';
-        });
+    const pendingRows = DOM.pendingTbody.querySelectorAll('tr');
+    pendingRows.forEach(row => {
+        row.removeEventListener('click', handlePendingRowClick);
+        row.addEventListener('click', handlePendingRowClick);
+    });
+
+    document.querySelectorAll('#pendingEvaluationsTable .evaluate-btn').forEach(btn => {
+        btn.removeEventListener('click', handleEvaluateClick);
+        btn.addEventListener('click', handleEvaluateClick);
     });
 }
 
@@ -1560,13 +1564,13 @@ function renderCompletedTable(completed, assessor) {
         return;
     }
 
-    DOM.completedTbody.innerHTML = completed.map(student => {
+    DOM.completedTbody.innerHTML = completed.map((student, index) => {
         const score = student.evaluation?.weightedTotal || 0;
         const scoreClass = score >= 80 ? 'score-high' : score >= 60 ? 'score-medium' : 'score-low';
         const evalDate = student.evaluation?.evaluatedAt ? new Date(student.evaluation.evaluatedAt).toLocaleDateString('en-GB') : '—';
 
         return `
-            <tr>
+            <tr data-student-id="${student.student_id}" data-assessor-id="${assessor.raw_id}" data-row-type="completed" data-index="${index}">
                 <td>${escapeHtml(student.id)}</td>
                 <td>${escapeHtml(student.name)}</td>
                 <td>${escapeHtml(student.programme)}</td>
@@ -1580,19 +1584,84 @@ function renderCompletedTable(completed, assessor) {
                     <button class="view-btn" data-student-id="${student.student_id}" data-assessor-id="${assessor.raw_id}">
                         View
                     </button>
-                    </td>
+                </td>
             </tr>
         `;
     }).join('');
 
-    document.querySelectorAll('.view-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            sessionStorage.setItem('viewStudentId', btn.getAttribute('data-student-id'));
-            sessionStorage.setItem('viewAssessorId', btn.getAttribute('data-assessor-id'));
-            sessionStorage.setItem('viewMode', 'true');
-            window.location.href = 'evaluation.html';
-        });
+    const completedRows = DOM.completedTbody.querySelectorAll('tr');
+    completedRows.forEach(row => {
+        row.removeEventListener('click', handleCompletedRowClick);
+        row.addEventListener('click', handleCompletedRowClick);
     });
+
+    document.querySelectorAll('#completedEvaluationsTable .view-btn').forEach(btn => {
+        btn.removeEventListener('click', handleViewClick);
+        btn.addEventListener('click', handleViewClick);
+    });
+}
+
+// ============================================
+// ROW SELECTION HANDLERS FOR ASSESSOR DASHBOARD
+// ============================================
+
+function clearAssessorSelections() {
+    const pendingRows = DOM.pendingTbody?.querySelectorAll('tr');
+    if (pendingRows) {
+        pendingRows.forEach(row => row.classList.remove('selected-row'));
+    }
+
+    const completedRows = DOM.completedTbody?.querySelectorAll('tr');
+    if (completedRows) {
+        completedRows.forEach(row => row.classList.remove('selected-row'));
+    }
+}
+
+function handlePendingRowClick(e) {
+    if (e.target.classList.contains('evaluate-btn')) {
+        return;
+    }
+
+    e.stopPropagation();
+    const clickedRow = e.currentTarget;
+
+    clearAssessorSelections();
+
+    clickedRow.classList.add('selected-row');
+}
+
+function handleCompletedRowClick(e) {
+    if (e.target.classList.contains('view-btn')) {
+        return;
+    }
+
+    e.stopPropagation();
+    const clickedRow = e.currentTarget;
+
+    clearAssessorSelections();
+
+    clickedRow.classList.add('selected-row');
+}
+
+function handleEvaluateClick(e) {
+    e.stopPropagation();
+    const studentId = e.currentTarget.getAttribute('data-student-id');
+    const assessorId = e.currentTarget.getAttribute('data-assessor-id');
+
+    sessionStorage.setItem('evalStudentId', studentId);
+    sessionStorage.setItem('evalAssessorId', assessorId);
+    window.location.href = 'evaluation.html';
+}
+
+function handleViewClick(e) {
+    e.stopPropagation();
+    const studentId = e.currentTarget.getAttribute('data-student-id');
+    const assessorId = e.currentTarget.getAttribute('data-assessor-id');
+
+    sessionStorage.setItem('viewStudentId', studentId);
+    sessionStorage.setItem('viewAssessorId', assessorId);
+    sessionStorage.setItem('viewMode', 'true');
+    window.location.href = 'evaluation.html';
 }
 
 // ============================================

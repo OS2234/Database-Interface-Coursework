@@ -2,7 +2,7 @@
 // CONFIGURATION
 // ============================================
 
-const API_BASE = '/Database-Interface-Coursework/api/';
+const API_BASE = '/COMP1044_CW_G33/api/';
 const DEFAULT_TIMEOUT = 15000;
 const RETRY_DELAY_MS = 500;
 const MAX_RETRIES = 2;
